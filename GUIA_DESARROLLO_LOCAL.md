@@ -3,7 +3,7 @@
 > **IMPORTANTE PARA CUALQUIER MOTOR DE IA O DESARROLLADOR:**
 > 1. **REPOSITORIO 100% AISLADO Y LOCAL:** Este proyecto ha sido descargado y desacoplado por completo del repositorio original en la nube (`git remote` ha sido eliminado). **Bajo ninguna circunstancia se debe ejecutar `git pull`, `git fetch` ni actualizar contra repositorios upstream.** Toda modificación debe realizarse exclusivamente sobre los archivos locales de este directorio.
 > 2. **VERSION FIJA:** Nos mantenemos estrictamente sobre esta base de código (versión base v2.2.3). Las personalizaciones nunca deben ser sobreescritas por updates externos.
-> 3. **DESPLIEGUE EN DOCKER:** El proyecto cuenta con [docker-compose.yml](file:///c:/Users/BAER/Desktop/tv%20controler/docker-compose.yml) configurado con `build: .` para compilar directamente desde el código fuente local, garantizando que todos los cambios aplicados en los archivos locales se reflejen en los contenedores.
+> 3. **DESPLIEGUE EN DOCKER:** El proyecto cuenta con [docker-compose.yml](./docker-compose.yml) configurado con `build: .` para compilar directamente desde el código fuente local, garantizando que todos los cambios aplicados en los archivos locales se reflejen en los contenedores.
 
 ---
 
@@ -20,16 +20,16 @@ ScreenTinker es un CMS de señalización digital (Digital Signage) ligero y de a
 - **Shared (`/shared`):** Shaders GLSL de transiciones y utilidades compartidas.
 
 ### Directorios y Archivos Clave:
-- [docker-compose.yml](file:///c:/Users/BAER/Desktop/tv%20controler/docker-compose.yml): Orquestación Docker para despliegue local.
-- [Dockerfile](file:///c:/Users/BAER/Desktop/tv%20controler/Dockerfile): Imagen multi-stage de producción (incluye ffmpeg y dependencias nativas).
-- [server/server.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/server.js): Punto de entrada del servidor, inicialización de Express y Socket.IO.
-- [server/routes/devices.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/routes/devices.js): API REST de gestión de pantallas.
-- [server/routes/playlists.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/routes/playlists.js): API REST de listas de reproducción e ítems.
-- [server/routes/widgets.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/routes/widgets.js): Renderizador HTML y lógica de widgets (incluyendo el widget `webpage`).
-- [server/middleware/subscription.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/middleware/subscription.js): Middlewares de control de planes, límites de almacenamiento y pantallas.
-- [server/player/index.html](file:///c:/Users/BAER/Desktop/tv%20controler/server/player/index.html): Núcleo del reproductor que corre en los televisores.
-- [frontend/js/views/dashboard.js](file:///c:/Users/BAER/Desktop/tv%20controler/frontend/js/views/dashboard.js): Vista principal del listado de pantallas y grupos.
-- [frontend/js/views/playlists.js](file:///c:/Users/BAER/Desktop/tv%20controler/frontend/js/views/playlists.js): Editor visual de listas de reproducción y sus elementos.
+- [docker-compose.yml](./docker-compose.yml): Orquestación Docker para despliegue local.
+- [Dockerfile](./Dockerfile): Imagen multi-stage de producción (incluye ffmpeg y dependencias nativas).
+- [server/server.js](./server/server.js): Punto de entrada del servidor, inicialización de Express y Socket.IO.
+- [server/routes/devices.js](./server/routes/devices.js): API REST de gestión de pantallas.
+- [server/routes/playlists.js](./server/routes/playlists.js): API REST de listas de reproducción e ítems.
+- [server/routes/widgets.js](./server/routes/widgets.js): Renderizador HTML y lógica de widgets (incluyendo el widget `webpage`).
+- [server/middleware/subscription.js](./server/middleware/subscription.js): Middlewares de control de planes, límites de almacenamiento y pantallas.
+- [server/player/index.html](./server/player/index.html): Núcleo del reproductor que corre en los televisores.
+- [frontend/js/views/dashboard.js](./frontend/js/views/dashboard.js): Vista principal del listado de pantallas y grupos.
+- [frontend/js/views/playlists.js](./frontend/js/views/playlists.js): Editor visual de listas de reproducción y sus elementos.
 
 ---
 
@@ -61,9 +61,9 @@ En el módulo de edición de playlists, permitir silenciar (mutear) individualme
 
 #### Diagnóstico Técnico:
 1. **Base de Datos:** La tabla `playlist_items` ya cuenta con la columna `muted INTEGER DEFAULT 0`.
-2. **Backend API:** En [server/routes/playlists.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/routes/playlists.js), la ruta `PUT /api/playlists/:id/items/:itemId` ya acepta la propiedad `muted` y dispara `emitMuteChanged()`.
-3. **Frontend:** En [frontend/js/views/playlists.js](file:///c:/Users/BAER/Desktop/tv%20controler/frontend/js/views/playlists.js) (función `renderItems`), cada fila de item tiene botones para programar, reemplazar, duplicar, mover y borrar, pero **no tiene un botón para alternar el estado de mute**.
-4. **Player (Televisor):** En [server/player/index.html](file:///c:/Users/BAER/Desktop/tv%20controler/server/player/index.html), cuando un usuario presiona teclas de volumen o la tecla de silencio en el televisor (líneas ~2882-2889), el reproductor invierte `video.muted = !video.muted` o incrementa el volumen quitando el mute. Si el ítem viene configurado con `item.muted = 1` desde el servidor, el reproductor debe tratarlo como **mute forzado e inmutable** desde el cliente local.
+2. **Backend API:** En [server/routes/playlists.js](./server/routes/playlists.js), la ruta `PUT /api/playlists/:id/items/:itemId` ya acepta la propiedad `muted` y dispara `emitMuteChanged()`.
+3. **Frontend:** En [frontend/js/views/playlists.js](./frontend/js/views/playlists.js) (función `renderItems`), cada fila de item tiene botones para programar, reemplazar, duplicar, mover y borrar, pero **no tiene un botón para alternar el estado de mute**.
+4. **Player (Televisor):** En [server/player/index.html](./server/player/index.html), cuando un usuario presiona teclas de volumen o la tecla de silencio en el televisor (líneas ~2882-2889), el reproductor invierte `video.muted = !video.muted` o incrementa el volumen quitando el mute. Si el ítem viene configurado con `item.muted = 1` desde el servidor, el reproductor debe tratarlo como **mute forzado e inmutable** desde el cliente local.
 
 #### Plan de Modificación:
 1. **Frontend (`frontend/js/views/playlists.js`):**
@@ -85,7 +85,7 @@ En el módulo de edición de playlists, permitir silenciar (mutear) individualme
 En la vista principal (Dashboard / Pantallas), cuando se tienen muchas pantallas organizadas en grupos, el listado vertical se vuelve excesivamente largo. Se debe permitir colapsar y expandir cada grupo individualmente, recordando la preferencia del usuario.
 
 #### Diagnóstico Técnico:
-1. En [frontend/js/views/dashboard.js](file:///c:/Users/BAER/Desktop/tv%20controler/frontend/js/views/dashboard.js), la función `renderGroupSection(group, devices, playlists)` genera el contenedor `.group-section` con su encabezado y la cuadrícula `.device-grid`.
+1. En [frontend/js/views/dashboard.js](./frontend/js/views/dashboard.js), la función `renderGroupSection(group, devices, playlists)` genera el contenedor `.group-section` con su encabezado y la cuadrícula `.device-grid`.
 2. No existe estado de colapso ni clases que oculten el `.device-grid` del grupo.
 3. La interacción de Drag & Drop para mover pantallas entre grupos debe seguir funcionando sin interferir con la acción de colapsar/expandir.
 
@@ -108,13 +108,13 @@ En la vista principal (Dashboard / Pantallas), cuando se tienen muchas pantallas
 Actualmente el backend devuelve un máximo de 100 televisores en la consulta principal, impidiendo visualizar y configurar pantallas cuando se supera este número. Se requiere elevar este límite a 1000.
 
 #### Diagnóstico Técnico:
-1. **Backend ([server/routes/devices.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/routes/devices.js), línea 28):**
+1. **Backend ([server/routes/devices.js](./server/routes/devices.js), línea 28):**
    ```javascript
    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
    ```
    - Si no se especifica `limit`, el valor por defecto es **100**.
    - El tope máximo permitido por el servidor está acotado con `Math.min(..., 500)`, impidiendo recibir más de 500 aunque se pidan.
-2. **Frontend ([frontend/js/api.js](file:///c:/Users/BAER/Desktop/tv%20controler/frontend/js/api.js), línea 340):**
+2. **Frontend ([frontend/js/api.js](./frontend/js/api.js), línea 340):**
    ```javascript
    getDevices: () => request('/devices'),
    ```
@@ -147,7 +147,7 @@ Garantizar que no exista ningún tipo de restricción en cuanto a cantidad de te
      - `starter`: `max_devices = 8`.
      - `pro`: `max_devices = 25`.
      - `enterprise`: `max_devices = -1` (ilimitado), `max_storage_mb = -1`.
-2. **Middlewares de Restricción ([server/middleware/subscription.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/middleware/subscription.js)):**
+2. **Middlewares de Restricción ([server/middleware/subscription.js](./server/middleware/subscription.js)):**
    - `checkDeviceLimit`: Bloquea el emparejamiento de pantallas en `/api/provision/pair` y `/api/devices/web-player` si `deviceCount >= plan.max_devices`.
    - `checkStorageLimit`: Bloquea la subida de contenido en `/api/content`.
    - `checkRemoteControl`: Bloquea comandos remotos en pantallas si el plan no tiene `remote_control = 1`.
@@ -185,12 +185,12 @@ Actualmente, al incrustar una página web mediante un widget de tipo Webpage, la
 
 #### Diagnóstico Técnico:
 1. **Doble Aislamiento y Restricción Severa de Sandbox:**
-   - **Capa 1 (Widget Render - [server/routes/widgets.js](file:///c:/Users/BAER/Desktop/tv%20controler/server/routes/widgets.js), función `renderWebpage`, línea 885):**
+   - **Capa 1 (Widget Render - [server/routes/widgets.js](./server/routes/widgets.js), función `renderWebpage`, línea 885):**
      ```html
      <iframe src="${escapeHtml(url)}" sandbox="${escapeHtml(iframeSandbox)}"></iframe>
      ```
      La variable `iframeSandbox` se calcula en `widgetIframeSandboxForWorkspace()` y por defecto devuelve estrictamente `'allow-scripts'`.
-   - **Capa 2 (Reproductor - [server/player/index.html](file:///c:/Users/BAER/Desktop/tv%20controler/server/player/index.html), líneas 5772 y 6757):**
+   - **Capa 2 (Reproductor - [server/player/index.html](./server/player/index.html), líneas 5772 y 6757):**
      El reproductor carga el widget dentro de otro iframe aplicando `widgetSandboxAttr()`, que también asigna únicamente `'allow-scripts'`.
 2. **Consecuencias de la Falta de Atributos:**
    - Al carecer de `allow-same-origin`, el iframe opera bajo un **origen nulo opaco (`null origin`)**. Cualquier sitio moderno (Single Page Applications, dashboards, sitios con React, Vue, Angular o autenticación) intenta acceder a `window.localStorage`, `window.sessionStorage`, `document.cookie` o la API de caché, arrojando de inmediato una excepción fatal:
@@ -262,7 +262,7 @@ Esta sección debe mantenerse actualizada por los desarrolladores o motores de I
 ## 5. Directrices para Nuevos Motores de IA o Desarrolladores
 
 Si estás tomando este proyecto a través de otra IA o sesión:
-1. **Lectura obligatoria:** Lee atentamente este archivo [GUIA_DESARROLLO_LOCAL.md](file:///c:/Users/BAER/Desktop/tv%20controler/GUIA_DESARROLLO_LOCAL.md) antes de proponer o tocar código.
+1. **Lectura obligatoria:** Lee atentamente este archivo [GUIA_DESARROLLO_LOCAL.md](./GUIA_DESARROLLO_LOCAL.md) antes de proponer o tocar código.
 2. **Preservar el desacoplamiento:** No agregues remotos de Git externos ni sugerencias de actualizar dependencias a versiones mayores que rompan el runtime de Node 20 / Alpine / Debian Slim.
 3. **Probar paso a paso:** Implementa cada tarea de forma atómica y verifica la sintaxis de JavaScript antes de dar por completado cada punto.
 4. **Respetar los nombres y rutas de archivos existentes.**
