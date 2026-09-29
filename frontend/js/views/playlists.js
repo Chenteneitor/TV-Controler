@@ -858,6 +858,8 @@ function paintSelectBar() {
     <button class="btn btn-secondary btn-sm" data-sel="validity" ${n ? '' : 'disabled'}>${t('playlist.bulk.validity')}</button>
     <button class="btn btn-secondary btn-sm" data-sel="activate" ${n ? '' : 'disabled'}>${t('playlist.bulk.activate')}</button>
     <button class="btn btn-secondary btn-sm" data-sel="deactivate" ${n ? '' : 'disabled'}>${t('playlist.bulk.deactivate')}</button>
+    <button class="btn btn-secondary btn-sm" data-sel="mute" ${n ? '' : 'disabled'}>${t('device.pl_item.mute') || 'Silenciar'}</button>
+    <button class="btn btn-secondary btn-sm" data-sel="unmute" ${n ? '' : 'disabled'}>${t('device.pl_item.unmute') || 'Activar audio'}</button>
     <button class="btn btn-secondary btn-sm" data-sel="log_on" ${n ? '' : 'disabled'}>${t('playlist.bulk.log_on')}</button>
     <button class="btn btn-secondary btn-sm" data-sel="log_off" ${n ? '' : 'disabled'}>${t('playlist.bulk.log_off')}</button>
     <select class="input" id="playlistBulkFit" ${n ? '' : 'disabled'} style="width:auto;background:var(--bg-input);font-size:13px">
@@ -991,6 +993,16 @@ async function handleSelection(act) {
     if (r) showToast(t('playlist.bulk.updated').replace('{n}', r.updated || ids.length));
     return;
   }
+  if (act === 'mute') {
+    const r = await runSelection({ action: 'mute', ids, muted: 1 });
+    if (r) showToast(t('device.toast.muted') || 'Silenciado');
+    return;
+  }
+  if (act === 'unmute') {
+    const r = await runSelection({ action: 'mute', ids, muted: 0 });
+    if (r) showToast(t('device.toast.unmuted') || 'Audio activado');
+    return;
+  }
   if (act === 'log_on') {
     const r = await runSelection({ action: 'log_play', ids, log_play: 1 });
     if (r) showToast(t('playlist.bulk.updated').replace('{n}', r.updated || ids.length));
@@ -1115,6 +1127,13 @@ function renderItems(items) {
         <input type="datetime-local" class="input item-play-until" data-item-id="${item.id}" value="${esc(item.play_until || '')}" style="width:168px;padding:4px 6px;font-size:12px">
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        ${!item.child_playlist_id ? `
+        <button class="btn-icon item-mute" data-item-id="${item.id}" data-muted="${item.muted ? 1 : 0}" title="${item.muted ? (t('device.pl_item.unmute') || 'Activar audio') : (t('device.pl_item.mute') || 'Silenciar desde el servidor')}" aria-label="${item.muted ? 'Unmute' : 'Mute'}" style="color:${item.muted ? '#ef4444' : 'var(--text-muted)'};background:${item.muted ? 'rgba(239,68,68,0.12)' : 'none'};border:none;cursor:pointer;padding:4px;border-radius:4px">
+          ${item.muted
+            ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+            : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'
+          }
+        </button>` : ''}
         <button class="btn-icon item-schedule" data-item-id="${item.id}" title="${t('itemsched.title')}" aria-label="${t('itemsched.title')}" style="color:${item.schedules && item.schedules.length ? '#38bdf8' : 'var(--text-muted)'};background:none;border:none;cursor:pointer;padding:4px;border-radius:4px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
         </button>
@@ -1203,6 +1222,28 @@ function renderItems(items) {
         showToast(t('playlist.toast.item_removed'));
       } catch (err) {
         showToast(err.message, 'error');
+      }
+    });
+  });
+
+  itemsEl.querySelectorAll('.item-mute').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const itemId = btn.dataset.itemId;
+      const currentMuted = btn.dataset.muted === '1';
+      const newMuted = currentMuted ? 0 : 1;
+      try {
+        btn.disabled = true;
+        await api.updatePlaylistItem(currentPlaylistId, itemId, { muted: newMuted });
+        btn.dataset.muted = String(newMuted);
+        refreshAfterMutation();
+        showToast(newMuted ? (t('device.toast.muted') || 'Silenciado') : (t('device.toast.unmuted') || 'Audio activado'));
+        const playlist = await api.getPlaylist(currentPlaylistId);
+        renderItems(playlist.items || []);
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
       }
     });
   });

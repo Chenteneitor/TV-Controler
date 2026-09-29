@@ -1823,6 +1823,11 @@
       // Scoped to #playerContainer, so this is BASE media by construction — un-muting it while an
       // overlay covers the screen is exactly the double-audio bug this suppression exists to stop.
       if (baseAudioSuppressed) return false;
+      const curItem = (typeof playlist !== 'undefined' && playlist && playlist[currentIndex]) || activeMuteItem;
+      if (curItem && curItem.muted) {
+        try { video.muted = true; } catch (_) {}
+        return false;
+      }
       if (!video.muted) return true;
       // Capture state, unmute, do a fresh pause+play within the same task.
       // Firefox is more permissive when play() is treated as a brand-new
@@ -1881,6 +1886,11 @@
         // user gesture. Otherwise tapping a follower screen would unmute it
         // and cause echo with the leader.
         if (isWallFollower()) return;
+        const curItem = (typeof playlist !== 'undefined' && playlist && playlist[currentIndex]) || activeMuteItem;
+        if (curItem && curItem.muted) {
+          if (currentVideoEl) { try { currentVideoEl.muted = true; } catch (_) {} }
+          return;
+        }
         if (wasFirst) console.log('[wall/audio] first user gesture detected — attempting unmute');
         tryUnmuteLeader();
         // Slide voiceover and music bed. Sits with tryUnmuteLeader because it is the same job for a
@@ -2879,14 +2889,29 @@
             // Wall followers ignore volume changes — they stay silent.
             // baseAudioSuppressed: a volume key must not un-silence the base under a live alarm.
             // There is no play() after this write, so the 'play' capture net would never correct it.
-            if (video && !isWallFollower() && !baseAudioSuppressed) { video.volume = Math.min(1, video.volume + 0.1); video.muted = false; }
+            if (video && !isWallFollower() && !baseAudioSuppressed) {
+              const curItem = (typeof playlist !== 'undefined' && playlist && playlist[currentIndex]) || activeMuteItem;
+              video.volume = Math.min(1, video.volume + 0.1);
+              if (curItem && curItem.muted) {
+                video.muted = true;
+              } else {
+                video.muted = false;
+              }
+            }
             break;
           case 'KEYCODE_VOLUME_DOWN':
             if (video) { video.volume = Math.max(0, video.volume - 0.1); }
             break;
           case 'KEYCODE_MENU':
-            // Toggle mute (followers can't unmute)
-            if (video && !baseAudioSuppressed && !(isWallFollower() && video.muted)) { video.muted = !video.muted; }
+            // Toggle mute (followers can't unmute; server-muted items stay muted)
+            if (video && !baseAudioSuppressed && !(isWallFollower() && video.muted)) {
+              const curItem = (typeof playlist !== 'undefined' && playlist && playlist[currentIndex]) || activeMuteItem;
+              if (curItem && curItem.muted) {
+                video.muted = true;
+              } else {
+                video.muted = !video.muted;
+              }
+            }
             break;
           case 'KEYCODE_HOME':
             // Go back to first item
@@ -6256,15 +6281,15 @@
       video.muted = !!(o.forceMuted || !userHasInteracted || !!item.muted); // autoplay policy + per-item mute (#129)
       // Explicit max volume when audio is allowed so it's at full level when
       // unmute happens (default is 1.0 but make it visible in logs).
-      if (!o.forceMuted) video.volume = 1.0;
+      if (!o.forceMuted && !item.muted) video.volume = 1.0;
       video.loop = !!o.loop;
       video.onended = () => { if (!video.loop && o.mayAdvance) nextItem(); };
       video.onerror = () => mediaFailureSkip(video, 'video', src, o.mayAdvance);
       video.onloadeddata = () => {
         console.log('[wall/audio] video loaded file=' + item.filename + ' role=' + (o.role || 'solo') + ' muted=' + video.muted + ' volume=' + video.volume);
       };
-      // A force-muted follower snaps back any stray unmute (the wall echo safety net).
-      if (o.forceMuted) {
+      // A force-muted follower or server-muted item snaps back any stray unmute (the wall echo and server-mute safety net).
+      if (o.forceMuted || !!item.muted) {
         video.addEventListener('volumechange', () => { if (!video.muted) { video.muted = true; } });
       }
       // Try playing as mounted above. If the browser blocks unmuted autoplay, retry muted — with
@@ -6295,7 +6320,10 @@
       const video = document.createElement('video');
       video.autoplay = true;
       video.muted = !!(o.forceMuted || !userHasInteracted || !!item.muted);
-      if (!o.forceMuted) video.volume = 1.0;
+      if (!o.forceMuted && !item.muted) video.volume = 1.0;
+      if (o.forceMuted || !!item.muted) {
+        video.addEventListener('volumechange', () => { if (!video.muted) { video.muted = true; } });
+      }
       video.playsInline = true;
       video.loop = false;   // a live stream has no end — looping is meaningless
       video.style.cssText = wallConfig

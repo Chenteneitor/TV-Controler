@@ -37,11 +37,17 @@
 function resolveMuted(s) {
   const st = s || {};
   if (st.wallFollower) return true;
+  // #129 / Local custom: Server-enforced item mute strictly outranks local TV user gestures.
+  // The TV / viewer cannot unmute an item that the server operator silenced.
+  if (st.itemMuted) {
+    if (st.remoteMuted === false) return false;
+    return true;
+  }
   // Autoplay policy is a hard constraint, not a preference: unmuted playback without a gesture is
   // blocked outright, which costs the VIDEO, not just the audio.
   if (!st.userGesture) return true;
   if (st.remoteMuted !== null && st.remoteMuted !== undefined) return !!st.remoteMuted;
-  return !!st.itemMuted;
+  return false;
 }
 
 /*
