@@ -684,6 +684,11 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN past_due_since INTEGER",
   "ALTER TABLE users ADD COLUMN payment_failed_email_sent_at INTEGER",
   "ALTER TABLE users ADD COLUMN subscription_lapsed_email_sent_at INTEGER",
+  // Username-based auth: replace email login with unique username+password.
+  "ALTER TABLE users ADD COLUMN username TEXT",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+  "UPDATE users SET username = LOWER(SUBSTR(email, 1, INSTR(email, '@') - 1)) WHERE (username IS NULL OR username = '') AND email LIKE '%@%'",
+  "UPDATE users SET username = LOWER(email) WHERE username IS NULL OR username = ''",
   "ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0",
   // AUTH-05: make break-glass recovery revocable, single-use and auditable.
   //

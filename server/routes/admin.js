@@ -32,7 +32,11 @@ const MIN_PASSWORD_LENGTH = 8;
 // them to a workspace + role. The result is indistinguishable from an
 // invite-accepted user (a global users row + a workspace_members row).
 router.post('/users', (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase();
+  const rawUsername = req.body?.username || req.body?.email;
+  const username = String(rawUsername || '').trim().toLowerCase().replace(/@.*$/, '');
+  const email = req.body?.email && EMAIL_RE.test(req.body.email) 
+    ? req.body.email.trim().toLowerCase() 
+    : `${username}@localhost.invalid`;
   const name = String(req.body?.name || '').trim();
   const password = String(req.body?.password || '');
   // Accept workspaceId (preferred) or orgId as an alias for the target field.
@@ -40,8 +44,8 @@ router.post('/users', (req, res) => {
   const role = String(req.body?.role || '').trim();
   const mustChangePassword = !!req.body?.mustChangePassword;
 
-  if (!email || !EMAIL_RE.test(email)) {
-    return res.status(400).json({ error: 'Valid email required' });
+  if (!username || !/^[a-zA-Z0-9_-]{3,32}$/.test(username)) {
+    return res.status(400).json({ error: 'Valid username required (3-32 characters, letters, numbers, hyphens, underscores)' });
   }
   if (!WORKSPACE_ROLES.includes(role)) {
     return res.status(400).json({ error: 'Role must be workspace_admin, workspace_editor, or workspace_viewer' });
@@ -58,85 +62,27 @@ router.post('/users', (req, res) => {
   if (!canAdminWorkspace(db, req.user, ws)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  /*
-   * ⚠️ An SSO-only organization must not have password accounts minted into it.
-   *
-   * This route creates a LOCAL account with an admin-chosen password, and it accepts any address —
-   * so on a tenant that requires single sign-on it was a one-call backdoor: create
-   * `contractor@somewhere-else.test` bound to the workspace, log in with the password, and every
-   * control the customer turned SSO-only on for is behind you. A review did exactly that, and the
-   * account it created could then mint another.
-   *
-   * platform_admin keeps the ability, because that is the operator break-glass — the same
-   * exemption the login gate makes, for the same reason.
-   */
-  if (req.user.role !== 'platform_admin' && ws.organization_id) {
-    // The table is absent on a single-tenant install; that simply means no organization requires
-    // single sign-on, so creation proceeds.
-    let org = null;
-    try { org = db.prepare('SELECT sso_only, name FROM organizations WHERE id = ?').get(ws.organization_id); }
-    catch { org = null; }
-    if (org && org.sso_only) {
-      return res.status(400).json({
-        error: `${org.name || 'This organization'} requires single sign-on, so password accounts cannot be created. Invite the person through your identity provider instead.`,
-        code: 'sso_only_org',
-      });
-    }
-  }
-
-  /*
-   * ⚠️ And the ADDRESS's own domain, wherever it is being created.
-   *
-   * Gating only on the target workspace left the squat open through a different door: create your
-   * own organization, then mint `cfo@theircompany.test` into YOUR workspace. Login is refused, so
-   * it is not access — but the row now has a password_hash, and an SSO login will not adopt a row
-   * that has one. The real CFO can then never sign in through their own identity provider, and a
-   * password reset they CAN complete lands them at a login that refuses them. Permanent, with no
-   * self-service way out, for any address at any SSO-only customer.
-   */
-  if (req.user.role !== 'platform_admin') {
-    let ownedBy = null;
-    try { ownedBy = oidcProviders.ssoOnlyForEmail(email); } catch { ownedBy = { unavailable: true }; }
-    if (ownedBy) {
-      return res.status(400).json({
-        error: 'That email domain uses single sign-on, so a password account cannot be created for it.',
-        code: 'sso_only_domain',
-      });
-    }
-  }
 
   // Stamp the target workspace so the activityLogger middleware (and our
   // explicit audit row) attribute to the right tenant.
   req.workspaceId = ws.id;
 
-  // Email uniqueness: clean 409, never overwrite an existing account.
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  // Uniqueness check: clean 409, never overwrite an existing account.
+  const existing = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
   if (existing) {
-    return res.status(409).json({ error: 'A user with that email already exists' });
+    return res.status(409).json({ error: 'A user with that username already exists' });
   }
 
   const id = uuidv4();
   const passwordHash = bcrypt.hashSync(password, 10);
 
-  // HOSTED_INSTANCE: an admin-provisioned user is already set up with a
-  // password, so they must NOT receive the welcome email or enter the
-  // activation-nudge lifecycle. We never call sendSignupEmails here, and the
-  // nudge sweep already excludes them (they have a workspace_members row); we
-  // additionally stamp both *_sent_at sentinels so any future sweep treats them
-  // as already-handled. See services/signupEmails.js + services/activationNudge.js.
-    //
-    // email_verified = 1 for the same reason (#292). The column defaults to 0 and there is no
-    // verification flow for a user an ADMIN created - nobody sent them a link. On an instance with
-    // no SMTP configured that left them with a permanent "Please confirm your email address"
-    // banner they could not clear, fixable only by editing the database by hand. An address chosen
-    // by an administrator provisioning the account is as verified as this system can make it.
   const txn = db.transaction(() => {
     db.prepare(`
       INSERT INTO users (
-        id, email, name, password_hash, auth_provider, role, plan_id,
+        id, email, username, name, password_hash, auth_provider, role, plan_id,
         must_change_password, email_verified, welcome_email_sent_at, activation_nudge_sent_at
-      ) VALUES (?, ?, ?, ?, 'local', 'user', 'free', ?, 1, strftime('%s','now'), strftime('%s','now'))
-    `).run(id, email, name || email.split('@')[0], passwordHash, mustChangePassword ? 1 : 0);
+      ) VALUES (?, ?, ?, ?, ?, 'local', 'user', 'free', ?, 1, strftime('%s','now'), strftime('%s','now'))
+    `).run(id, email, username, name || username, passwordHash, mustChangePassword ? 1 : 0);
 
     // Same membership footprint as an accepted invite: one workspace_members
     // row, invited_by = the admin who created them.

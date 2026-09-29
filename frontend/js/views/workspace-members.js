@@ -170,8 +170,8 @@ function renderMemberRow(m, opts = {}) {
     <div class="member-row${viaOrg ? ' member-row--via-org' : ''}">
       <div class="member-avatar">${esc(initial)}</div>
       <div class="member-meta">
-        <div class="member-name">${esc(m.name || m.email)}</div>
-        <div class="member-email">${esc(m.email)}</div>
+        <div class="member-name">${esc(m.username || m.name || m.email)}</div>
+        <div class="member-email">${esc(m.name && m.name !== m.username ? m.name : '')}</div>
       </div>
       ${roleCell}
       <div class="member-detail">${rightCell}</div>

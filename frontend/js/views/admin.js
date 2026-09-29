@@ -418,7 +418,7 @@ async function loadUsers() {
                    execution in the PLATFORM ADMIN's session on this page - the very page operators
                    are now emailed to. Note backticks are illegal here: this sits inside a template
                    literal. -->
-              <td style="padding:8px"><div style="font-weight:500">${esc(u.name || u.email)}</div><div style="font-size:11px;color:var(--text-muted)">${esc(u.email)}</div></td>
+              <td style="padding:8px"><div style="font-weight:500">${esc(u.username || u.name || u.email)}</div>${u.name && u.name !== u.username ? `<div style="font-size:11px;color:var(--text-muted)">${esc(u.name)}</div>` : ''}</td>
               <td style="padding:8px"><span style="background:var(--bg-primary);padding:2px 8px;border-radius:10px;font-size:11px">${esc(u.auth_provider)}</span></td>
               <td style="padding:8px;font-size:11px;color:var(--text-muted)">${u.last_login ? new Date(u.last_login * 1000).toLocaleString() : t('common.never')}</td>
               <td style="padding:8px">
@@ -433,7 +433,7 @@ async function loadUsers() {
               </td>
               ${workspaceCell(u)}
               <td style="padding:8px;white-space:nowrap">
-                ${u.auth_provider === 'local' && u.id !== currentUser.id ? `<button class="btn btn-secondary btn-sm" data-reset-pw-user="${esc(u.id)}" data-user-email="${esc(u.email)}" style="margin-right:4px">${t('admin.reset_password')}</button>` : ''}
+                ${u.auth_provider === 'local' && u.id !== currentUser.id ? `<button class="btn btn-secondary btn-sm" data-reset-pw-user="${esc(u.id)}" data-user-email="${esc(u.username || u.email)}" style="margin-right:4px">${t('admin.reset_password')}</button>` : ''}
                 ${!isPlatformAdmin(u) ? `<button class="btn btn-danger btn-sm" data-delete-user="${u.id}">${t('admin.remove')}</button>` : `<span style="color:var(--text-muted);font-size:11px">${t('admin.owner')}</span>`}
               </td>
             </tr>

@@ -29,7 +29,7 @@ class SessionError extends Error {
 // user's first accessible workspace.
 function generateToken(user, currentWorkspaceId) {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role, current_workspace_id: currentWorkspaceId || null },
+    { id: user.id, email: user.email, username: user.username, role: user.role, current_workspace_id: currentWorkspaceId || null },
     config.jwtSecret,
     { algorithm: 'HS256', expiresIn: config.jwtExpiry }
   );
@@ -148,7 +148,7 @@ function resolveSessionUser(token, { allowPasswordChange = false, sourceIp = nul
     return { user: support.supportUser(decoded), decoded, viaRecovery: false, viaSupport: true };
   }
   if (decoded.mfa_pending) throw new SessionError('mfa_required');
-  const user = db.prepare('SELECT id, email, name, role, auth_provider, avatar_url, plan_id, email_alerts, must_change_password FROM users WHERE id = ?').get(decoded.id);
+  const user = db.prepare('SELECT id, email, username, name, role, auth_provider, avatar_url, plan_id, email_alerts, must_change_password FROM users WHERE id = ?').get(decoded.id);
   if (!user) throw new SessionError('user_not_found');
   if (user.must_change_password && !allowPasswordChange) {
     throw new SessionError('password_change_required');

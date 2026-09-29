@@ -797,25 +797,7 @@ function updateSidebarUser() {
 // stays hidden). Cleared automatically once the account verifies.
 function updateVerifyBanner(user) {
   const existing = document.getElementById('verifyBanner');
-  const unverified = user && user.email_verified === 0 && user.auth_provider === 'local';
-  if (!unverified) { if (existing) existing.remove(); return; }
-  if (existing) return;
-  const bannersEl = document.getElementById('banners');
-  if (!bannersEl) return;
-  const b = document.createElement('div');
-  b.id = 'verifyBanner';
-  b.style.cssText = 'background:var(--warning,#f59e0b);color:#1a1200;padding:9px 16px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap';
-  b.innerHTML = `<span>✉️ ${t('auth.verify_banner')}</span>`;
-  const btn = document.createElement('button');
-  btn.className = 'btn btn-sm';
-  btn.style.cssText = 'background:#1a1200;color:#fff;padding:4px 12px';
-  btn.textContent = t('auth.verify_banner_resend');
-  btn.addEventListener('click', async () => {
-    try { await api.resendVerification(user.email); showToast(t('auth.verify_resent'), 'success'); }
-    catch { showToast(t('auth.verify_resend_failed'), 'error'); }
-  });
-  b.appendChild(btn);
-  bannersEl.appendChild(b);
+  if (existing) existing.remove();
 }
 
 /*

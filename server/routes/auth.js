@@ -120,101 +120,44 @@ router.post('/register', (req, res) => {
   if (!canRegister()) {
     return res.status(403).json({ error: 'Public registration is disabled. Contact your administrator.' });
   }
-  const { email, password, name, createOrg } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-  /*
-   * Registration accepted anything with an @ in it, so `<img/src=q/onerror=alert(1)>@acme.test`
-   * became a real row — markup with no spaces, which is why it also slipped the asserted-email
-   * check. Rendering is escaped now, but an address that is not an address has no business being
-   * stored: it is displayed on operator screens, put in emails, and compared against domains.
-   */
-  if (!ASSERTED_EMAIL_RE.test(String(email).toLowerCase()) || /[<>"'`\\]/.test(String(email))) {
-    return res.status(400).json({ error: 'Enter a valid email address' });
+  const { username, password, name } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+  // Validate username: alphanumeric, underscores, hyphens, 3-32 chars
+  if (!/^[a-zA-Z0-9_-]{3,32}$/.test(String(username))) {
+    return res.status(400).json({ error: 'Username must be 3-32 characters and contain only letters, numbers, underscores or hyphens' });
   }
   if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-  /*
-   * An organization that requires single sign-on must not have password accounts created at its
-   * domains — not even by a stranger. Two things went wrong without this: the account was issued a
-   * working session immediately (a bypass), and it then held the address forever, because
-   * upsertFederatedUser refuses to adopt a row that has a password. Registering ceo@acme.test
-   * before the real CEO's first login left that address dead in BOTH directions with no
-   * self-service way out.
-   */
-  let ssoOnlyOrg = null;
-  try {
-    ssoOnlyOrg = oidcProviders.ssoOnlyForEmail(email);
-  } catch (e) {
-    console.error('[register] SSO-only status unavailable, refusing registration:', e && e.message);
-    ssoOnlyOrg = { unavailable: true };
-  }
-  if (ssoOnlyOrg) {
-    return res.status(403).json({
-      error: 'That domain uses single sign-on. Sign in with your organization instead of creating a password.',
-      code: 'sso_required',
-    });
-  }
-
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
-  if (existing) return res.status(409).json({ error: 'Email already registered' });
+  const existingUsername = db.prepare('SELECT id FROM users WHERE username = ?').get(username.toLowerCase());
+  if (existingUsername) return res.status(409).json({ error: 'Username already taken' });
 
   const id = uuidv4();
   const passwordHash = bcrypt.hashSync(password, 10);
+  // Synthetic internal email to satisfy NOT NULL constraint — never shown to users
+  const syntheticEmail = `${username.toLowerCase()}@localhost.invalid`;
 
-  // First user becomes platform_admin with enterprise plan (self-hosted) or free plan with Pro trial.
-  // Phase 1 renamed the legacy 'superadmin' role to 'platform_admin'; new bootstrap users get the new name directly.
+  // First user becomes platform_admin with enterprise plan (self-hosted).
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
   const role = userCount === 0 ? 'platform_admin' : 'user';
   const isFirstUser = userCount === 0;
-  const plan = (isFirstUser && config.selfHosted) ? 'enterprise' : 'pro'; // Start on Pro trial
+  const plan = (isFirstUser && config.selfHosted) ? 'enterprise' : 'pro';
   const trialStarted = isFirstUser && config.selfHosted ? null : Math.floor(Date.now() / 1000);
 
-  // Email verification: require it for a normal local signup only when we can actually send
-  // the mail. The bootstrap (first) user is never gated — a fresh install must not lock out
-  // its own admin — and neither is an instance with no email transport configured (a self-host
-  // that can't send would otherwise strand every signup). email_verified column DEFAULTs to 1,
-  // so we only ever write 0 here on the require-verification path.
-  const requireVerify = !isFirstUser && emailSvc.isConfigured();
-  const emailVerified = requireVerify ? 0 : 1;
-
   db.prepare(`
-    INSERT INTO users (id, email, name, password_hash, auth_provider, role, plan_id, trial_started, trial_plan, email_verified)
-    VALUES (?, ?, ?, ?, 'local', ?, ?, ?, ?, ?)
-  `).run(id, email.toLowerCase(), name || email.split('@')[0], passwordHash, role, plan, trialStarted, trialStarted ? 'pro' : null, emailVerified);
+    INSERT INTO users (id, email, username, name, password_hash, auth_provider, role, plan_id, trial_started, trial_plan, email_verified)
+    VALUES (?, ?, ?, ?, ?, 'local', ?, ?, ?, ?, 1)
+  `).run(id, syntheticEmail, username.toLowerCase(), name || username, passwordHash, role, plan, trialStarted, trialStarted ? 'pro' : null);
 
-  const user = db.prepare('SELECT id, email, name, role, auth_provider, avatar_url, plan_id, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_ends, email_verified FROM users WHERE id = ?').get(id);
-  // #12: org-on-create. Per-request createOrg overrides the deployment default
-  // (config.autoCreateOrgOnSignup). The first user is always given an org so a
-  // fresh install is never left headless. When neither applies, the user is
-  // created org-less and lands on the "no workspaces yet" state until an admin
-  // assigns them.
-  const createOrgForUser = isFirstUser
-    || (createOrg !== undefined ? !!createOrg : config.autoCreateOrgOnSignup);
+  const user = db.prepare('SELECT id, email, username, name, role, auth_provider, avatar_url, plan_id, email_verified FROM users WHERE id = ?').get(id);
+  const createOrgForUser = isFirstUser || config.autoCreateOrgOnSignup;
   const workspaceId = ensureDefaultOrgForUser(user, { allowCreate: createOrgForUser });
 
-  // Welcome + admin-notify emails (hosted instance only, idempotent, async).
-  sendSignupEmails(user, req);
-
-  // Verification email (issue a token first) whenever this signup needs to confirm its address.
-  if (requireVerify) {
-    const vtoken = emailVerify.issue(user.id);
-    sendVerificationEmail(user, vtoken, req);
-  }
-
-  // Hosted (SELF_HOSTED unset) HARD-BLOCKS an unverified local signup: no session until they
-  // click the link. Self-host is a soft nudge — fall through and issue the session; the client
-  // shows a "verify your email" banner (user.email_verified === 0) with a resend button.
-  if (requireVerify && !config.selfHosted) {
-    return res.status(201).json({ verification_required: true, email: user.email });
-  }
-
-  // This signup is being handed a live session, so it counts as the user's most recent one. The
-  // early return above (hosted + verification required) issues NO session and is deliberately not
-  // stamped: those accounts really have never had one.
   stampLastLogin(user.id);
   const token = generateToken(user, workspaceId);
   res.status(201).json({ token, user, current_workspace_id: workspaceId });
 });
+
 
 // Login
 /** A user whose every workspace membership is on a COPIED workspace exists here only as a copy. */
@@ -230,170 +173,41 @@ function isCopiedUser(userId) {
 }
 
 router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
-  /*
-   * The DOMAIN check runs BEFORE the account lookup, deliberately.
-   *
-   * Answering `403 sso_required` only for addresses that exist turned this endpoint into an
-   * account-existence oracle: a wrong password got 403 for a real address and 401 for an invented
-   * one. Whether a domain uses single sign-on is already public — /sso/discover answers it for
-   * anyone — so refusing on the domain alone reveals nothing new, and it reveals it identically
-   * for addresses that exist and addresses that do not.
-   */
-  /*
-   * SSO-only refusal, arranged so it is neither an account-existence oracle NOR a way to brick the
-   * instance.
-   *
-   * Two constraints pull against each other. Answering 403 only for addresses that EXIST turned
-   * this into an enumeration oracle. But hoisting the check above the account lookup — the obvious
-   * cure — silently killed the platform_admin break-glass, because role is not known until the row
-   * is read. That is worse than it sounds: on a self-hosted instance the operator IS the org owner,
-   * and the guard that stops an admin locking themselves out GUARANTEES their address is inside the
-   * enforced set. Approving a removal request needs a platform admin to be signed in, so the
-   * recovery loop closed on itself and the only way back was a shell.
-   *
-   * Both hold if the operator is let through on a CORRECT PASSWORD and nothing else: every wrong
-   * answer is the identical 403, whether the address exists, does not exist, or belongs to the
-   * operator. The only observable difference needs the password, which an enumerator does not have.
-   */
-  const domainEnforced = (() => {
-    try { return oidcProviders.ssoOnlyForEmail(email); } catch (e) {
-      console.error('[login] SSO-only status unavailable, refusing password login:', e && e.message);
-      return { unavailable: true };
-    }
-  })();
-  const ssoRefusal = () => {
-    logFailedLogin(email, getClientIp(req), 'Password login refused: domain requires SSO');
-    return res.status(403).json({
-      error: 'Your organization requires single sign-on. Use the single sign-on button to continue.',
-      code: 'sso_required',
-      sso_start: '/api/auth/sso/start',
-    });
-  };
-
-  const user = db.prepare('SELECT * FROM users WHERE email = ? AND auth_provider = ?').get(email.toLowerCase(), 'local');
+  const ip = getClientIp(req);
+  const user = db.prepare('SELECT * FROM users WHERE username = ? AND auth_provider = ?').get(username.toLowerCase(), 'local');
   if (!user) {
-    // An unknown address at an enforced domain answers exactly like a known one — see above.
-    if (domainEnforced) return ssoRefusal();
-    logFailedLogin(email, getClientIp(req), 'User not found');
-    return res.status(401).json({ error: 'Invalid email or password' });
-  }
-  // The break-glass: the operator may still sign in with a password at an enforced domain, but a
-  // WRONG password answers with the same refusal everyone else gets, so nothing is learned.
-  const breakGlass = domainEnforced && user.role === 'platform_admin' && !domainEnforced.unavailable;
-  if (domainEnforced && !breakGlass) return ssoRefusal();
-
-  /*
-   * SSO-ONLY. The organization that owns this VERIFIED domain requires its identity provider, so a
-   * password is not an alternative way in — otherwise the MFA, conditional access and instant
-   * deprovisioning the customer bought are all reachable around.
-   *
-   * ⚠️ platform_admin is exempt, and that exemption is load-bearing rather than a convenience. The
-   * operator is the one who approves turning this OFF. If the operator's own address sits at an
-   * SSO-only domain and that identity provider breaks, nobody can sign in to approve anything and
-   * the instance is bricked with no path out. The exemption is the break-glass; it applies to the
-   * people who run the server, never to a customer's own admins.
-   *
-   * Said plainly rather than as "invalid email or password": this is not a credential failure and
-   * pretending otherwise sends the user to reset a password that will never work. The domain
-   * already answered `sso: true` publicly, so naming it reveals nothing new.
-   */
-  if (user.role !== 'platform_admin') {
-    /*
-     * A throw here means we could not determine the answer (schema drift, a broken read). Treat
-     * that as "SSO is required" rather than letting a 500 escape or, worse, letting the login
-     * through: the whole point of this gate is that a password must not be an alternative way in,
-     * and "we could not check" is not "there is nothing to check".
-     */
-    let enforced = null;
-    try {
-      // By MEMBERSHIP as well as by domain — an account inside the tenant at an outside address
-      // was the demonstrated way around this.
-      enforced = oidcProviders.ssoOnlyForUser(user);
-    } catch (e) {
-      console.error('[login] SSO-only status unavailable, refusing password login:', e && e.message);
-      enforced = { unavailable: true };
-    }
-    if (enforced) {
-      /*
-       * Reached only when the ADDRESS's domain is not enforced but the user is a MEMBER of an
-       * organization that requires single sign-on — an off-domain contractor, say. The generic 401
-       * is deliberate: a distinct answer here would put the existence oracle back, for exactly the
-       * accounts an attacker would most like to enumerate. These people cannot sign in by any
-       * route (their domain is not verified, so their org's provider will not assert for them
-       * either), which is why enabling SSO-only now names them to the admin up front instead of
-       * leaving them to discover it here.
-       */
-      logFailedLogin(email, getClientIp(req), 'Password login refused: member of an SSO-only organization');
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
+    logFailedLogin(username, ip, 'User not found');
+    return res.status(401).json({ error: 'Invalid username or password' });
   }
 
-  // Per-ACCOUNT brute-force lockout (lib/login-lockout), on top of the per-IP limiter in
-  // server.js. Checked BEFORE bcrypt so a locked account costs no hashing work.
-  //
-  // The response is deliberately IDENTICAL to a wrong password: a distinct 429 would tell
-  // an attacker "this account exists and is under attack", turning the endpoint into an
-  // account-existence oracle. The trade is that a locked-out legitimate user sees the
-  // generic message, so the trip is written to activity_log for the operator instead.
+  // Per-account brute-force lockout
   if (loginLockout.isLocked(user.id)) {
-    logFailedLogin(email, getClientIp(req), 'Locked out (too many failed passwords)');
-    return res.status(401).json({ error: 'Invalid email or password' });
+    logFailedLogin(username, ip, 'Locked out (too many failed passwords)');
+    return res.status(401).json({ error: 'Invalid username or password' });
   }
 
-  /*
-   * Scale-out (docs/scale-out-design.md §5.3): a COPIED account has no password hash here by
-   * design — the replica must never verify a password, or it has become an identity provider. If
-   * this node holds copied workspaces and a primary is configured, the login goes to the primary
-   * as the user's own request; the token that comes back verifies here (shared JWT_SECRET) and the
-   * copied user row carries the rest. Only for a row that is a copy: a local account with no hash
-   * (SSO-only, provisioned) keeps today's refusal below.
-   */
+  // Scale-out: proxy to primary if this is a copied user with no password hash
   if (!user.password_hash && config.primaryUrl && isCopiedUser(user.id)) {
     return require('../lib/replica-proxy').proxyToPrimary(req, res, config);
   }
 
   if (!user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
-    if (breakGlass) {
-      // Same answer as every other address at this domain: the operator's existence is not a fact
-      // this endpoint gives away to someone who cannot type their password.
-      loginLockout.recordFailure(user.id);
-      return ssoRefusal();
-    }
     const rec = loginLockout.recordFailure(user.id);
-    if (rec.lockedUntil) logActivity(null, 'auth:login_locked', `${email} - locked after repeated failures`, null, getClientIp(req));
-    logFailedLogin(email, getClientIp(req), 'Wrong password');
-    return res.status(401).json({ error: 'Invalid email or password' });
+    if (rec.lockedUntil) logActivity(null, 'auth:login_locked', `${username} - locked after repeated failures`, null, ip);
+    logFailedLogin(username, ip, 'Wrong password');
+    return res.status(401).json({ error: 'Invalid username or password' });
   }
 
-  // Password proven. Clear the counter HERE rather than in issueSession: the TOTP and
-  // email-verification branches below return before issueSession is ever reached, so a
-  // reset placed there would never fire for those accounts.
   loginLockout.reset(user.id);
 
-  // Email verification gate. Unverified LOCAL accounts are asked to confirm on login — this
-  // covers both new signups AND existing users who predate the feature (grandfathered locals are
-  // email_verified=0). Gated ONLY where we can actually send the mail (isConfigured), so an
-  // instance with no email transport never locks anyone out. Existing users never received a
-  // signup email, so (re)send one here (guarded against re-mailing a still-valid token). HOSTED
-  // hard-blocks — no session, no MFA step; self-host is a soft nudge (login proceeds, client
-  // shows a banner). SSO + platform admins are grandfathered to 1, so this never trips for them.
-  if (!user.email_verified && emailSvc.isConfigured()) {
-    ensureVerificationEmail(user, req);
-    if (!config.selfHosted) {
-      return res.json({ verification_required: true, email: user.email });
-    }
-  }
-
-  // #100: password OK. If TOTP is enabled, DON'T issue a session yet - return an
-  // mfa_pending token; the client completes via POST /api/auth/totp/verify. This is
-  // the ONLY place TOTP gates (interactive password login). The SSO routes and the
-  // API-token path never reach here, so both bypass TOTP by construction.
+  // TOTP gate
   if (user.totp_enabled) {
     return res.json({ mfa_required: true, mfa_token: generateMfaPendingToken(user) });
   }
+
   issueSession(req, res, user);
 });
 
@@ -901,7 +715,7 @@ router.put('/me', requireAuth, (req, res) => {
     db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = strftime(\'%s\',\'now\') WHERE id = ?')
       .run(hash, req.user.id);
   }
-  const user = db.prepare('SELECT id, email, name, role, auth_provider, avatar_url, plan_id, email_alerts, must_change_password FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, email, username, name, role, auth_provider, avatar_url, plan_id, email_alerts, must_change_password FROM users WHERE id = ?').get(req.user.id);
   res.json(user);
 });
 
@@ -914,7 +728,7 @@ router.get('/users', requireAuth, requireAdmin, (req, res) => {
     // yields that row's values; the CASE blanks them when count != 1 so we never
     // surface a single workspace name for a multi-membership user.
     const users = db.prepare(`
-      SELECT u.id, u.email, u.name, u.role, u.auth_provider, u.avatar_url, u.plan_id, u.created_at, u.last_login,
+      SELECT u.id, u.email, u.username, u.name, u.role, u.auth_provider, u.avatar_url, u.plan_id, u.created_at, u.last_login,
              COUNT(wm.workspace_id) AS workspace_count,
              CASE WHEN COUNT(wm.workspace_id) = 1 THEN MAX(w.id)   END AS workspace_id,
              CASE WHEN COUNT(wm.workspace_id) = 1 THEN MAX(w.name) END AS workspace_name,
@@ -930,7 +744,7 @@ router.get('/users', requireAuth, requireAdmin, (req, res) => {
   } else {
     // Admin sees themselves + users in their teams
     const users = db.prepare(`
-      SELECT DISTINCT u.id, u.email, u.name, u.role, u.auth_provider, u.avatar_url, u.plan_id, u.created_at
+      SELECT DISTINCT u.id, u.email, u.username, u.name, u.role, u.auth_provider, u.avatar_url, u.plan_id, u.created_at
       FROM users u
       LEFT JOIN team_members tm ON u.id = tm.user_id
       WHERE u.id = ? OR tm.team_id IN (SELECT team_id FROM team_members WHERE user_id = ?)
