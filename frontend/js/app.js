@@ -994,6 +994,9 @@ if (isAuthenticated()) {
 }
 window.addEventListener('hashchange', route);
 enableHelpTips();
+if (!isAuthenticated() && (!window.location.hash || window.location.hash === '#' || window.location.hash === '#/')) {
+  window.location.hash = '#/login';
+}
 route();
 
 // Close-modal buttons (replaces inline onclick handlers — required for CSP).

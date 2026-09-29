@@ -475,17 +475,9 @@ app.use((req, res, next) => {
   return next();
 });
 
-// First view is login: redirect / directly to /#/login
-app.get('/', (req, res) => {
-  res.redirect(302, '/#/login');
-});
-
-// Dashboard app. Inject the resolved instance / custom-domain branding into the
-// shell as a <meta> (#76) so brand-prime can apply it before first paint when the
-// per-workspace brand is not cached yet - no ScreenTinker flash on a never-visited
-// org. CSP blocks inline <script>, so the brand rides in a <meta> that brand-prime
-// reads. Falls back to a plain send of the shell if anything goes wrong.
-app.get('/app', (req, res) => {
+// Dashboard app. Served directly on / and /app.
+// The frontend SPA router automatically shows the login view as the first view for unauthenticated users.
+app.get(['/', '/app'], (req, res) => {
   const file = path.join(config.frontendDir, 'index.html');
   try {
     const { db } = require('./db/database');
