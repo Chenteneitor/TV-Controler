@@ -1,4 +1,4 @@
-# GUÍA DE DESARROLLO Y PERSONALIZACIÓN LOCAL: SCREENTINKER
+# GUÍA DE DESARROLLO Y PERSONALIZACIÓN LOCAL: TV-CONTROLER
 
 > **IMPORTANTE PARA CUALQUIER MOTOR DE IA O DESARROLLADOR:**
 > 1. **REPOSITORIO 100% AISLADO Y LOCAL:** Este proyecto ha sido descargado y desacoplado por completo del repositorio original en la nube (`git remote` ha sido eliminado). **Bajo ninguna circunstancia se debe ejecutar `git pull`, `git fetch` ni actualizar contra repositorios upstream.** Toda modificación debe realizarse exclusivamente sobre los archivos locales de este directorio.
@@ -9,7 +9,7 @@
 
 ## 1. Arquitectura y Estructura del Proyecto
 
-ScreenTinker es un CMS de señalización digital (Digital Signage) ligero y de alto rendimiento.
+TV-Controler es un CMS de señalización digital (Digital Signage) ligero y de alto rendimiento.
 
 ### Tecnologías Principales:
 - **Backend (`/server`):** Node.js 20 con Express.
@@ -231,7 +231,7 @@ Actualmente, al incrustar una página web mediante un widget de tipo Webpage, la
    ```
 3. **Inspeccionar los logs en tiempo real:**
    ```powershell
-   docker compose logs -f screentinker
+   docker compose logs -f tv-controler
    ```
 4. **Detener el servicio:**
    ```powershell
@@ -255,7 +255,8 @@ Esta sección debe mantenerse actualizada por los desarrolladores o motores de I
 | 4 | Desbloqueo total de planes y licencias | ✅ Completado | `ac5ebd88` | `subscription.js` bypassed + `schema.sql` ilimitado |
 | 5 | Corrección de carga de páginas en widgets | ✅ Completado | `21e3a5b3` | `widgets.js` + `player/index.html` sandbox completo |
 | 6 | Autenticación por usuario único y eliminación de emails | ✅ Completado | `6221831e` | Login/registro con username único + contraseña, neutralización de emails internos, `/` redirige a login |
-| 7 | *Modificaciones futuras fase 2* | 📌 Por definir | — | A la espera de las especificaciones del usuario |
+| 7 | Rebranding completo a TV-Controler | ✅ Completado | `1fd442a2` | Reemplazo de marcas, títulos, logos por defecto, endpoints y textos a TV-Controler |
+| 8 | *Modificaciones futuras fase 2* | 📌 Por definir | — | A la espera de las especificaciones del usuario |
 
 ---
 

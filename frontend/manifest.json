@@ -1,6 +1,6 @@
 {
-  "name": "ScreenTinker",
-  "short_name": "ScreenTinker",
+  "name": "TV-Controler",
+  "short_name": "TV-Controler",
   "description": "Digital Signage Management",
   "start_url": "/",
   "display": "standalone",

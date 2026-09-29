@@ -310,13 +310,13 @@ app.get('/api', (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.setHeader('Link', aiSurface.linkHeader(base));
   res.json({
-    name: 'ScreenTinker Public API',
+    name: 'TV-Controler Public API',
     description: 'Token-scoped REST API for digital signage: displays, content, playlists, layouts, schedules and reports.',
     openapi: `${base}/openapi.yaml`,
     documentation: `${base}/docs`,
     authentication: `${base}/auth.md`,
     catalog: `${base}/.well-known/api-catalog`,
-    source: 'https://github.com/screentinker/screentinker',
+    source: 'https://github.com/Chenteneitor/TV-Controler',
   });
 });
 
@@ -2591,7 +2591,7 @@ const otaDownloadState = otaDownloadGuard.prodState();   // #146 P3.8: shared si
  * another one. Only characters that are safe in both a filename and a header survive.
  */
 function apkDownloadName(req) {
-  let brand = 'ScreenTinker';
+  let brand = 'TV-Controler';
   try {
     // ⚠️ Required HERE, matching the other call sites in this file — it is not a module-scope
     // import. Referencing it as a free variable throws a ReferenceError that this very try/catch
@@ -2693,11 +2693,11 @@ app.get('/tizen/sssp_config.xml', (req, res) => {
 });
 
 // The widget package. Named <widgetname>.wgt from the manifest so the panel resolves it here.
-app.get('/tizen/ScreenTinker.wgt', (req, res) => {
+app.get(['/tizen/ScreenTinker.wgt', '/tizen/TV-Controler.wgt'], (req, res) => {
   const wgt = wgtCache.get();
   if (!wgt.exists) return tizenNotAvailable(res);
   res.setHeader('Content-Type', 'application/octet-stream');
-  res.setHeader('Content-Disposition', 'attachment; filename="ScreenTinker.wgt"');
+  res.setHeader('Content-Disposition', 'attachment; filename="TV-Controler.wgt"');
   res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(wgt.path);
 });
@@ -2717,11 +2717,11 @@ app.get('/webos/version.json', (req, res) => {
   res.json(ipkCache.versionJson());
 });
 
-app.get('/webos/ScreenTinker.ipk', (req, res) => {
+app.get(['/webos/ScreenTinker.ipk', '/webos/TV-Controler.ipk'], (req, res) => {
   const ipk = ipkCache.get();
   if (!ipk.exists) return webosNotAvailable(res);
   res.setHeader('Content-Type', 'application/octet-stream');
-  res.setHeader('Content-Disposition', 'attachment; filename="ScreenTinker.ipk"');
+  res.setHeader('Content-Disposition', 'attachment; filename="TV-Controler.ipk"');
   res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(ipk.path);
 });
@@ -2730,17 +2730,17 @@ app.get(['/webos', '/webos/'], (req, res) => {
   const ipk = ipkCache.get();
   const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send('<!DOCTYPE html><html><head><meta charset="utf-8"><title>ScreenTinker on LG webOS Signage</title>'
+  res.send('<!DOCTYPE html><html><head><meta charset="utf-8"><title>TV-Controler on LG webOS Signage</title>'
     + '<meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<style>body{font-family:-apple-system,system-ui,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:40px 20px;line-height:1.6}'
     + '.w{max-width:640px;margin:0 auto}h1{color:#34d399}code{background:#1e293b;padding:2px 8px;border-radius:4px;font-size:14px}'
     + 'ol{padding-left:20px}li{margin:8px 0}.mut{color:#94a3b8;font-size:14px}.pill{display:inline-block;background:#1e293b;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8}a{color:#3b82f6}</style></head>'
-    + '<body><div class="w"><h1>ScreenTinker \u2014 LG webOS Signage</h1>'
+    + '<body><div class="w"><h1>TV-Controler \u2014 LG webOS Signage</h1>'
     + (ipk.exists ? `<p class="pill">Ready \u00b7 v${ipk.version} \u00b7 ${(ipk.size / 1024 / 1024).toFixed(2)} MB</p>` : '<p class="pill">No .ipk hosted yet</p>')
-    + `<p>Download <a href="${base}/webos/ScreenTinker.ipk">ScreenTinker.ipk</a> and install it on the panel:</p>`
+    + `<p>Download <a href="${base}/webos/TV-Controler.ipk">TV-Controler.ipk</a> and install it on the panel:</p>`
     + '<ol><li><b>USB:</b> copy the file to a USB stick, plug it into the panel, open <b>Settings \u2192 General \u2192 Install App</b> (the exact path varies by webOS version), and pick it.</li>'
     + '<li><b>SI server:</b> host the file and point the panel\u2019s SI Server setting at it.</li>'
-    + `<li>Launch ScreenTinker, enter <code>${base}</code>, and claim the pairing code in your dashboard.</li></ol>`
+    + `<li>Launch TV-Controler, enter <code>${base}</code>, and claim the pairing code in your dashboard.</li></ol>`
     + `<p class="mut">The app checks <code>${base}/webos/version.json</code> and installs a newer build itself when the panel\u2019s SCAP library is present. Without it (or from a browser) the web player runs at <a href="${base}/player">${base}/player</a>.</p>`
     + '</div></body></html>');
 });
@@ -2751,16 +2751,16 @@ app.get(['/tizen', '/tizen/'], (req, res) => {
   const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
   const ready = wgt.exists;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send('<!DOCTYPE html><html><head><meta charset="utf-8"><title>ScreenTinker on Samsung (Tizen)</title>'
+  res.send('<!DOCTYPE html><html><head><meta charset="utf-8"><title>TV-Controler on Samsung (Tizen)</title>'
     + '<meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<style>body{font-family:-apple-system,system-ui,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:40px 20px;line-height:1.6}'
     + '.w{max-width:640px;margin:0 auto}h1{color:#34d399}code{background:#1e293b;padding:2px 8px;border-radius:4px;font-size:14px}'
     + 'ol{padding-left:20px}li{margin:8px 0}.mut{color:#94a3b8;font-size:14px}.pill{display:inline-block;background:#1e293b;border-radius:20px;padding:4px 12px;font-size:13px;color:#94a3b8}</style></head>'
-    + '<body><div class="w"><h1>ScreenTinker — Samsung Signage (Tizen)</h1>'
+    + '<body><div class="w"><h1>TV-Controler — Samsung Signage (Tizen)</h1>'
     + (ready ? `<p class="pill">Ready · v${wgt.version} · ${(wgt.size/1024/1024).toFixed(2)} MB</p>` : '<p class="pill">No signed .wgt hosted yet</p>')
     + '<p>On the Samsung signage panel, go to <b>URL Launcher / Custom App</b> and enter:</p>'
     + `<p><code>${base}/tizen</code></p>`
-    + '<p>The panel installs the ScreenTinker player as a native app, then shows a 6-digit pairing code to claim in your dashboard.</p>'
+    + '<p>The panel installs the TV-Controler player as a native app, then shows a 6-digit pairing code to claim in your dashboard.</p>'
     + '<p class="mut">Requires a Samsung Partner-signed build on retail panels. No signed build? Point URL Launcher at '
     + `<code>${base}/player</code> to run the web player instead.</p>`
     + '</div></body></html>');
@@ -2782,7 +2782,7 @@ const CONTENT_PREFIXES = ['/guides/', '/integrations/'];
 const NOT_FOUND_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
   + '<meta name="viewport" content="width=device-width,initial-scale=1">'
   + '<meta name="robots" content="noindex">'
-  + '<title>Page not found | ScreenTinker</title>'
+  + '<title>Page not found | TV-Controler</title>'
   + '<style>body{font-family:-apple-system,system-ui,sans-serif;display:flex;justify-content:center;'
   + 'align-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e2e8f0}'
   + 'div{text-align:center;max-width:460px;padding:32px 24px}h1{font-size:22px;margin:0 0 8px}'
@@ -2877,7 +2877,7 @@ if (hasSsl) {
 server.listen(listenPort, '0.0.0.0', () => {
   console.log(`
 ╔══════════════════════════════════════════════════╗
-║       ScreenTinker Server v${VERSION.padEnd(22).slice(0, 22)}║
+║       TV-Controler Server v${VERSION.padEnd(22).slice(0, 22)}║
 ║──────────────────────────────────────────────────║
 ║  Dashboard: ${protocol}://localhost:${String(listenPort).padEnd(5)}              ║
 ║  API:       ${protocol}://localhost:${String(listenPort).padEnd(5)}/api          ║

@@ -575,7 +575,7 @@ export default {
   'content.youtube_add_btn': 'Add YouTube Video',
   // IPTV / live HLS stream
   'content.hls': 'Live stream',
-  'content.hls_desc': 'HLS (.m3u8), or an rtsp:// camera on Android players. The screen opens the URL itself, so it can be a LAN address. ScreenTinker never pulls the video.',
+  'content.hls_desc': 'HLS (.m3u8), or an rtsp:// camera on Android players. The screen opens the URL itself, so it can be a LAN address. TV-Controler never pulls the video.',
   'content.hls_url_placeholder': 'https://...m3u8  or  rtsp://user:pass@10.0.0.5/stream',
   'content.hls_name_placeholder': 'Channel name (optional)',
   'content.hls_add_btn': 'Add live stream',
@@ -993,7 +993,7 @@ export default {
   'device.remote.enable_system_view': 'Enable System View',
   'device.remote.system_view_tooltip': 'Prompts the device user to allow full screen capture - enables remote view of home screen, settings, and other apps',
   'device.remote.capture_projection': 'Showing the whole screen. This is granted per session — an app update clears it and the view drops back to the player only. Turning on the accessibility service instead keeps it across updates.',
-  'device.remote.capture_view': 'This panel is only showing the player\u2019s own window — anything else on the device appears blank. Press the button above to restore the full screen, or enable the ScreenTinker accessibility service on the device, which also survives updates.',
+  'device.remote.capture_view': 'This panel is only showing the player\u2019s own window — anything else on the device appears blank. Press the button above to restore the full screen, or enable the TV-Controler accessibility service on the device, which also survives updates.',
   'device.remote.capture_none': 'No screen capture is available on this panel right now.',
   'device.remote.system_view_hint': 'Requires one-time approval on device',
   'device.remote.system_view_owner': 'System View auto-enabled (device owner) — full screen, no approval needed',
@@ -1087,7 +1087,7 @@ export default {
   // Support access (Settings) — the customer half is for every admin; the issue_* half only
   // renders on the instance that holds the support signing key.
   'support.title': 'Support Access',
-  'support.desc': 'Let ScreenTinker support into this instance for a limited time, only when you ask. Generate a request code and send it to support; the token they sign against it opens a single, time-boxed session that you can see here and end at any moment. Support sessions cannot manage users, billing or delete anything.',
+  'support.desc': 'Let TV-Controler support into this instance for a limited time, only when you ask. Generate a request code and send it to support; the token they sign against it opens a single, time-boxed session that you can see here and end at any moment. Support sessions cannot manage users, billing or delete anything.',
   'support.request_btn': 'Generate support request code',
   'support.request_hint': 'Valid 24 hours, single use. Nothing happens until a support token is pasted into your login page.',
   'support.request_code_label': 'Send this code to support:',

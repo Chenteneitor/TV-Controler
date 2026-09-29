@@ -689,6 +689,7 @@ const migrations = [
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)",
   "UPDATE users SET username = LOWER(SUBSTR(email, 1, INSTR(email, '@') - 1)) WHERE (username IS NULL OR username = '') AND email LIKE '%@%'",
   "UPDATE users SET username = LOWER(email) WHERE username IS NULL OR username = ''",
+  "UPDATE white_labels SET brand_name = 'TV-Controler' WHERE brand_name = 'ScreenTinker'",
   "ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0",
   // AUTH-05: make break-glass recovery revocable, single-use and auditable.
   //

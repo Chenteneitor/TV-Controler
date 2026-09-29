@@ -143,7 +143,7 @@
   <!-- BrightSign native sync (SyncManager). Inert without the platform module, so the player
        falls back to its own clock-derived group sync. -->
   <script src="/player/st-sync.js"></script>
-  <title>ScreenTinker Player</title>
+  <title>TV-Controler Player</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -277,7 +277,7 @@
 <body>
   <!-- Setup Screen -->
   <div id="setupScreen">
-    <h1>ScreenTinker</h1>
+    <h1>TV-Controler</h1>
     <div class="subtitle">Web Player</div>
     <div class="form" id="urlForm">
       <label>Server URL</label>
@@ -311,7 +311,7 @@
   <!-- Status Overlay -->
   <div id="statusOverlay" style="display:none">
     <div class="spinner"></div>
-    <h2>ScreenTinker</h2>
+    <h2>TV-Controler</h2>
     <p id="statusText" data-i18n="connecting">Connecting...</p>
   </div>
 
@@ -378,7 +378,7 @@ const PLAYER_I18N = {
     pairing_hint: "Enter this code in the dashboard to pair this display",
     connecting: "Connecting...",
     connecting_muted: "Connecting (audio muted)...",
-    info_title: "ScreenTinker Web Player",
+    info_title: "TV-Controler Web Player",
     info_close_hint: "Press Back again or click to close",
     info_device_id: "Device ID",
     info_device_name: "Device Name",
@@ -408,7 +408,7 @@ const PLAYER_I18N = {
     pairing_hint: "Ingresa este c\xF3digo en el panel para vincular esta pantalla",
     connecting: "Conectando...",
     connecting_muted: "Conectando (audio silenciado)...",
-    info_title: "Reproductor web ScreenTinker",
+    info_title: "Reproductor web TV-Controler",
     info_close_hint: "Presiona Atr\xE1s de nuevo o haz clic para cerrar",
     info_device_id: "ID del dispositivo",
     info_device_name: "Nombre del dispositivo",
@@ -438,7 +438,7 @@ const PLAYER_I18N = {
     pairing_hint: "Saisissez ce code dans le tableau de bord pour apparier cet \xE9cran",
     connecting: "Connexion...",
     connecting_muted: "Connexion (audio coup\xE9)...",
-    info_title: "Lecteur web ScreenTinker",
+    info_title: "Lecteur web TV-Controler",
     info_close_hint: "Appuyez \xE0 nouveau sur Retour ou cliquez pour fermer",
     info_device_id: "ID de l\u2019appareil",
     info_device_name: "Nom de l\u2019appareil",
@@ -468,7 +468,7 @@ const PLAYER_I18N = {
     pairing_hint: "Geben Sie diesen Code im Dashboard ein, um diesen Bildschirm zu koppeln",
     connecting: "Verbindung wird hergestellt...",
     connecting_muted: "Verbindung (Audio stummgeschaltet)...",
-    info_title: "ScreenTinker Web-Player",
+    info_title: "TV-Controler Web-Player",
     info_close_hint: "Erneut Zur\xFCck dr\xFCcken oder klicken zum Schlie\xDFen",
     info_device_id: "Ger\xE4te-ID",
     info_device_name: "Ger\xE4tename",
@@ -498,7 +498,7 @@ const PLAYER_I18N = {
     pairing_hint: "Digite este c\xF3digo no painel para parear esta tela",
     connecting: "Conectando...",
     connecting_muted: "Conectando (\xE1udio mudo)...",
-    info_title: "Player web ScreenTinker",
+    info_title: "Player web TV-Controler",
     info_close_hint: "Pressione Voltar novamente ou clique para fechar",
     info_device_id: "ID do dispositivo",
     info_device_name: "Nome do dispositivo",
@@ -1726,7 +1726,7 @@ if (_previewQS.get("preview") === "1" && (_previewQS.get("playlist") || _preview
     {
       const tapOverlay = document.createElement("div");
       tapOverlay.style.cssText = "position:fixed;top:0;right:0;bottom:0;left:0;background:#111827;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer";
-      tapOverlay.innerHTML = '\n          <h1 style="color:#3b82f6;font-size:3.6rem;font-family:sans-serif;margin-bottom:1.2rem">ScreenTinker</h1>\n          <p style="color:#94a3b8;font-size:1.8rem;font-family:sans-serif">Tap anywhere to start</p>\n          <p style="color:#64748b;font-size:1.3rem;font-family:sans-serif;margin-top:2.4rem">Audio requires user interaction</p>\n        ';
+      tapOverlay.innerHTML = '\n          <h1 style="color:#3b82f6;font-size:3.6rem;font-family:sans-serif;margin-bottom:1.2rem">TV-Controler</h1>\n          <p style="color:#94a3b8;font-size:1.8rem;font-family:sans-serif">Tap anywhere to start</p>\n          <p style="color:#64748b;font-size:1.3rem;font-family:sans-serif;margin-top:2.4rem">Audio requires user interaction</p>\n        ';
       tapOverlay.onclick = () => {
         unlockAudio();
         tapOverlay.remove();
@@ -5670,7 +5670,7 @@ function renderCaptureCanvas() {
       ctx.fillStyle = "#3b82f6";
       ctx.font = "bold 28px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("ScreenTinker Web Player", W / 2, H / 2 - 40);
+      ctx.fillText("TV-Controler Web Player", W / 2, H / 2 - 40);
       ctx.fillStyle = "#94a3b8";
       ctx.font = "16px sans-serif";
       const item = playlist[currentIndex];

@@ -1,8 +1,8 @@
 {
-  "name": "screentinker",
+  "name": "tv-controler",
   "version": "2.2.3",
   "license": "MIT",
-  "description": "ScreenTinker - Digital Signage Management Server",
+  "description": "TV-Controler - Digital Signage Management Server",
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",

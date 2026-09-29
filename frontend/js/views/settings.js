@@ -234,7 +234,7 @@ export async function render(container) {
       <div id="whiteLabelForm">
         <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px">${t('settings.white_label_desc')}</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label>${t('settings.brand_name')}</label><input type="text" id="wlBrandName" class="input" placeholder="ScreenTinker"></div>
+          <div class="form-group"><label>${t('settings.brand_name')}</label><input type="text" id="wlBrandName" class="input" placeholder="TV-Controler"></div>
           <div class="form-group"><label>${t('settings.logo_url')}</label><input type="text" id="wlLogoUrl" class="input" placeholder="https://..."></div>
           <div class="form-group"><label>${t('settings.primary_color')}</label><input type="color" id="wlPrimaryColor" value="#3B82F6" style="width:100%;height:36px;border:none;cursor:pointer;border-radius:var(--radius)"></div>
           <div class="form-group"><label>${t('settings.bg_color')}</label><input type="color" id="wlBgColor" value="#111827" style="width:100%;height:36px;border:none;cursor:pointer;border-radius:var(--radius)"></div>
@@ -312,7 +312,7 @@ export async function render(container) {
     <div class="settings-section">
       <h3>${t('settings.about')}</h3>
       <div style="color:var(--text-secondary);font-size:13px">
-        <p><strong>${esc(window.__ST_BRAND_NAME || 'ScreenTinker')}</strong>${appVersion ? ` v${esc(appVersion)}` : ''}</p>
+        <p><strong>${esc(window.__ST_BRAND_NAME || 'TV-Controler')}</strong>${appVersion ? ` v${esc(appVersion)}` : ''}</p>
         <p style="margin-top:4px">${t('settings.about_tagline')}</p>
         <!-- The permanent home for the release notes the dashboard panel links to. Populated
              after render because it is a fetch, and About must not wait on one. -->
@@ -699,7 +699,7 @@ export async function render(container) {
 
     box.innerHTML = `
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
-        ScreenTinker can't see how widely it's deployed, because most installs are private by
+        TV-Controler can't see how widely it's deployed, because most installs are private by
         design. Sharing lets us say how many screens are running — nothing more.
       </p>
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -912,7 +912,7 @@ export async function render(container) {
         const blob = new Blob([text + '\n'], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'screentinker-recovery-codes.txt';
+        a.download = 'tv-controler-recovery-codes.txt';
         a.click();
         URL.revokeObjectURL(a.href);
       });
@@ -1553,17 +1553,17 @@ function openWidgetSandboxDisableConfirmModal(confirmationPhrase) {
         <div class="modal-body" style="white-space:pre-wrap;line-height:1.45">
 Widget HTML currently runs in a null-origin sandbox. That means widget code
 cannot read your session, your cookies, or anything else stored by
-ScreenTinker in this browser.
+TV-Controler in this browser.
 
 Turning this off re-enables allow-same-origin. Widget HTML will then run with
-the same privileges as ScreenTinker itself. Any script in any widget in this
+the same privileges as TV-Controler itself. Any script in any widget in this
 organization will be able to:
 
   - Read the device token of every display that shows the widget, and act as
-    that display against the ScreenTinker API
+    that display against the TV-Controler API
   - Read the session token of any logged-in user who opens a display in their
     own browser
-  - Call the ScreenTinker API as that user, including admin actions
+  - Call the TV-Controler API as that user, including admin actions
   - Read and modify content on every other display in this organization
   - Silently exfiltrate all of the above to any server it likes
 

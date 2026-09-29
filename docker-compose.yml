@@ -1,9 +1,9 @@
 services:
-  screentinker:
+  tv-controler:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: screentinker
+    container_name: tv-controler
     restart: unless-stopped
     ports:
       - "3001:3001"
