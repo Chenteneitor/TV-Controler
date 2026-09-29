@@ -15,6 +15,32 @@ const pluginRegistry = require('../lib/plugins/registry');
 const { BUILTIN_WIDGET_TYPES } = require('../lib/plugins/reserved');
 const { redactSecrets, mergeSecrets, fieldsForWidget, redactConfigJson } = require('../lib/plugins/secrets');
 
+const widgetCookieJars = new Map();
+
+function mergeCookies(existing, setCookieHeaders) {
+  const map = new Map();
+  if (existing) {
+    existing.split(';').forEach(pair => {
+      const idx = pair.indexOf('=');
+      if (idx > 0) {
+        map.set(pair.slice(0, idx).trim(), pair.slice(idx + 1).trim());
+      }
+    });
+  }
+  if (setCookieHeaders) {
+    const list = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+    list.forEach(header => {
+      if (!header || typeof header !== 'string') return;
+      const firstPart = header.split(';')[0];
+      const idx = firstPart.indexOf('=');
+      if (idx > 0) {
+        map.set(firstPart.slice(0, idx).trim(), firstPart.slice(idx + 1).trim());
+      }
+    });
+  }
+  return Array.from(map.entries()).map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
 function redactWidgetRow(row) {
   if (!row) return row;
   const fields = fieldsForWidget(row.widget_type);
@@ -322,7 +348,7 @@ function renderWidgetHtml(type, config, opts = {}) {
     case 'weather': return renderWeather(config);
     case 'rss': return renderRSS(config);
     case 'text': return renderText(config, iframeSandbox);
-    case 'webpage': return renderWebpage(config, iframeSandbox, opts.origin);
+    case 'webpage': return renderWebpage(config, iframeSandbox, opts.origin, opts.widgetId);
     case 'social': return renderSocial(config);
     case 'directory-board': return renderDirectoryBoard(config);
     case 'directory-search': return renderDirectorySearch(config);
@@ -414,7 +440,188 @@ router.get('/:id/render', (req, res) => {
     resolveFont: require('./fonts').fontResolverFor(widget),
     resolveData: dataResolverFor(widget),
     workspaceId: widget.workspace_id,
+    widgetId: widget.id,
   }));
+});
+
+// Proxy view for webpage widgets (solves cross-origin cookie, SameSite, and CSRF issues for internal FIDS/dashboards)
+router.get('/:id/proxy-view', async (req, res) => {
+  const widget = db.prepare('SELECT * FROM widgets WHERE id = ?').get(req.params.id);
+  if (!widget) return res.status(404).send('Widget not found');
+  const config = JSON.parse(widget.config || '{}');
+  if (!config.url) return res.status(400).send('No URL configured');
+
+  try {
+    const targetUrl = safeUrl(config.url);
+    const parsedTarget = new URL(targetUrl);
+    const targetOrigin = parsedTarget.origin;
+
+    const savedCookies = widgetCookieJars.get(widget.id) || '';
+    const headers = {
+      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 TV-Controler',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    };
+    if (savedCookies) headers['Cookie'] = savedCookies;
+
+    const upstream = await fetch(targetUrl, { headers });
+    const setCookies = upstream.headers.getSetCookie ? upstream.headers.getSetCookie() : [upstream.headers.get('set-cookie')];
+    if (setCookies && setCookies.length && setCookies[0]) {
+      widgetCookieJars.set(widget.id, mergeCookies(savedCookies, setCookies));
+    }
+
+    let html = await upstream.text();
+
+    const proxyAjaxPath = `/api/widgets/${widget.id}/proxy-ajax`;
+    const interceptor = `
+      <base href="${escapeHtml(targetOrigin)}/">
+      <style>
+        ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+        html, body { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+      </style>
+      <script>
+        (function() {
+          var targetOrigin = ${JSON.stringify(targetOrigin)};
+          var proxyAjaxBase = (window.location.origin || '') + ${JSON.stringify(proxyAjaxPath)};
+
+          function rewrite(url) {
+            if (typeof url !== 'string') return url;
+            if (url.indexOf(proxyAjaxBase) === 0) return url;
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+              if (url.indexOf(targetOrigin) === 0) {
+                return proxyAjaxBase + '?path=' + encodeURIComponent(url.slice(targetOrigin.length));
+              }
+              return url;
+            }
+            if (url.startsWith('/')) {
+              return proxyAjaxBase + '?path=' + encodeURIComponent(url);
+            }
+            return proxyAjaxBase + '?path=' + encodeURIComponent('/' + url);
+          }
+
+          var origOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function(method, url) {
+            var args = Array.prototype.slice.call(arguments);
+            args[1] = rewrite(url);
+            return origOpen.apply(this, args);
+          };
+
+          if (window.fetch) {
+            var origFetch = window.fetch;
+            window.fetch = function(resource, init) {
+              if (typeof resource === 'string') {
+                resource = rewrite(resource);
+              } else if (resource && typeof resource.url === 'string') {
+                resource = new Request(rewrite(resource.url), resource);
+              }
+              return origFetch.call(this, resource, init);
+            };
+          }
+        })();
+      </script>
+    `;
+
+    if (html.includes('<head>')) {
+      html = html.replace('<head>', '<head>' + interceptor);
+    } else if (html.includes('<head ')) {
+      html = html.replace(/<head\b[^>]*>/, '$&' + interceptor);
+    } else {
+      html = interceptor + html;
+    }
+
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(html);
+  } catch (err) {
+    console.error('[proxy-view error]', err.message);
+    res.status(502).send(`<!DOCTYPE html><html><body style="background:#111;color:#eee;font-family:sans-serif;padding:24px"><h3>Error cargando página web</h3><p>${escapeHtml(err.message)}</p></body></html>`);
+  }
+});
+
+// Proxy AJAX handler for embedded webpage widgets
+router.all('/:id/proxy-ajax', async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+    return res.sendStatus(204);
+  }
+
+  const widget = db.prepare('SELECT * FROM widgets WHERE id = ?').get(req.params.id);
+  if (!widget) return res.status(404).send('Widget not found');
+  const config = JSON.parse(widget.config || '{}');
+  if (!config.url) return res.status(400).send('No URL configured');
+
+  const path = req.query.path || '';
+  const parsedTarget = new URL(config.url);
+  const targetUrl = new URL(path, parsedTarget.origin).toString();
+
+  const savedCookies = widgetCookieJars.get(widget.id) || '';
+
+  const forwardHeaders = {
+    'Accept': req.headers['accept'] || '*/*',
+    'Content-Type': req.headers['content-type'] || 'application/json',
+    'Referer': config.url,
+    'Origin': parsedTarget.origin,
+    'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 TV-Controler',
+  };
+  if (savedCookies) {
+    forwardHeaders['Cookie'] = savedCookies;
+    const xsrf = savedCookies.split(';').find(c => c.trim().startsWith('XSRF-TOKEN='));
+    if (xsrf) {
+      const val = xsrf.trim().split('=')[1];
+      if (val) forwardHeaders['X-XSRF-TOKEN'] = decodeURIComponent(val);
+    }
+  }
+
+  try {
+    let bodyData = undefined;
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      if (Buffer.isBuffer(req.body)) {
+        bodyData = req.body;
+      } else if (typeof req.body === 'string') {
+        bodyData = req.body;
+      } else if (typeof req.body === 'object' && req.body !== null) {
+        if ((req.headers['content-type'] || '').includes('application/x-www-form-urlencoded')) {
+          bodyData = new URLSearchParams(req.body).toString();
+        } else {
+          bodyData = JSON.stringify(req.body);
+        }
+      } else {
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+        }
+        if (chunks.length) {
+          bodyData = Buffer.concat(chunks);
+        }
+      }
+    }
+
+    const upstream = await fetch(targetUrl, {
+      method: req.method,
+      headers: forwardHeaders,
+      body: bodyData,
+    });
+
+    const newCookies = upstream.headers.getSetCookie ? upstream.headers.getSetCookie() : [upstream.headers.get('set-cookie')];
+    if (newCookies && newCookies.length && newCookies[0]) {
+      widgetCookieJars.set(widget.id, mergeCookies(savedCookies, newCookies));
+    }
+
+    const contentType = upstream.headers.get('content-type') || 'application/json';
+    const data = await upstream.arrayBuffer();
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+    res.status(upstream.status).send(Buffer.from(data));
+  } catch (err) {
+    console.error('[proxy-ajax error]', err.message);
+    res.status(502).json({ error: 'Proxy upstream failed', details: err.message });
+  }
 });
 
 /*
@@ -850,14 +1057,12 @@ function renderText(c, iframeSandbox = 'allow-scripts') {
 </style></head><body><iframe sandbox="${escapeHtml(iframeSandbox)}" srcdoc="${escapeHtml(inner)}"></iframe></body></html>`;
 }
 
-function renderWebpage(c, iframeSandbox = 'allow-scripts', origin) {
+function renderWebpage(c, iframeSandbox = 'allow-scripts', origin, widgetId) {
   const zoom = (c.zoom || 100) / 100;
   const invZoom = 100 / (c.zoom || 100) * 100;
   const kioskPath = typeof c.url === 'string' && /^\/api\/kiosk\/[a-f0-9-]+\/render(?:\?|$)/i.test(c.url);
   let url = kioskPath ? c.url : safeUrl(c.url);
-  // Older kiosk assignments saved the dashboard's absolute origin. When the dashboard was
-  // opened at localhost, that origin points at the display itself. Kiosk renders are served by
-  // this widget's origin, so only rewrite that known-bad generated URL.
+
   try {
     const parsed = new URL(url);
     if (['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
@@ -867,7 +1072,12 @@ function renderWebpage(c, iframeSandbox = 'allow-scripts', origin) {
     }
   } catch (_) { /* safeUrl already reduced invalid input to about:blank */ }
 
-  const effectiveSandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads allow-pointer-lock';
+  const isKiosk = kioskPath || /\/api\/kiosk\/[a-f0-9-]+\/render/i.test(url);
+  // If this widget has an ID and is not an internal kiosk render and proxy is not explicitly disabled,
+  // route through our proxy-view so external pages with SameSite/CSRF session cookies work seamlessly in player iframes.
+  const isProxied = widgetId && !isKiosk && c.proxy !== false && url && url !== 'about:blank';
+  const iframeSrc = isProxied ? `${origin || ''}/api/widgets/${widgetId}/proxy-view` : url;
+  const sandboxAttr = isProxied ? '' : 'sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads allow-pointer-lock"';
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
@@ -886,8 +1096,8 @@ function renderWebpage(c, iframeSandbox = 'allow-scripts', origin) {
     transform-origin: 0 0;
   }
 </style></head><body>
-<iframe src="${escapeHtml(url)}"
-        sandbox="${effectiveSandbox}"
+<iframe src="${escapeHtml(iframeSrc)}"
+        ${sandboxAttr}
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated; camera; microphone; geolocation"
         loading="eager"
         referrerpolicy="no-referrer-when-downgrade">

@@ -527,6 +527,7 @@ async function render(item, content, screenProfile, options = {}) {
         resolveImage: imageResolverFor ? imageResolverFor({ workspace_id: wsId }) : undefined,
         resolveFont: fontResolverFor ? fontResolverFor({ workspace_id: wsId }) : undefined,
         resolveData: typeof dataResolverFor === 'function' ? dataResolverFor(wsId) : undefined,
+        widgetId: item.widget_id,
       });
       const png = await renderWidgetOrHtml(html, profile, type, options);
       return { png };
@@ -784,6 +785,7 @@ async function renderLayout(layout, zoneEntries, screenProfile, options = {}) {
           resolveImage: imageResolverFor ? imageResolverFor({ workspace_id: wsId }) : undefined,
           resolveFont: fontResolverFor ? fontResolverFor({ workspace_id: wsId }) : undefined,
           resolveData: typeof dataResolverFor === 'function' ? dataResolverFor(wsId) : undefined,
+          widgetId: item.widget_id,
         });
 
         innerHtml = `<iframe srcdoc="${escapeHtmlAttr(widgetHtml)}" style="width:100%;height:100%;border:none;overflow:hidden;display:block;" scrolling="no"></iframe>`;
