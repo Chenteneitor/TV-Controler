@@ -427,10 +427,10 @@ router.get('/:id/render', (req, res) => {
   //
   // A URL with no rev is the old shape and stays uncacheable: nothing distinguishes one render
   // from the next, so a cached copy could serve content the operator has already changed.
-  if (req.query.rev) {
+  if (req.query.rev && widget.widget_type !== 'webpage') {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   } else {
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   }
   res.setHeader('Content-Type', 'text/html');
   res.send(renderWidgetHtml(widget.widget_type, config, {

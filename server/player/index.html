@@ -5810,8 +5810,10 @@
       // A newer render supersedes a still-loading swap (rapid re-render / playlist churn).
       discardPendingSwap();
 
+      const isWebpage = item.widget_type === 'webpage';
+      const revParam = isWebpage ? Date.now() : (item.widget_rev || 0);
       const iframe = document.createElement('iframe');
-      iframe.src = `${config.serverUrl}/api/widgets/${item.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${item.widget_rev||0}`;
+      iframe.src = `${config.serverUrl}/api/widgets/${item.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${revParam}${isWebpage ? '&type=webpage' : ''}`;
       // Positioned + sized by the `#playerContainer > iframe` CSS rule. Hidden while it
       // loads so its black background never shows over the outgoing content.
       iframe.style.background = '#000';
@@ -6774,8 +6776,10 @@
           // Leader / single screen drives image advance; follower waits for sync
           if (!isFollower) scheduleAdvance(nextItem, (item.duration_sec || 10) * 1000);
         } else if (item.widget_id) {
+          const isWebpage = item.widget_type === 'webpage';
+          const revParam = isWebpage ? Date.now() : (item.widget_rev || 0);
           const iframe = document.createElement('iframe');
-          iframe.src = `${serverUrl}/api/widgets/${item.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${item.widget_rev||0}`;
+          iframe.src = `${serverUrl}/api/widgets/${item.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${revParam}${isWebpage ? '&type=webpage' : ''}`;
           iframe.style.cssText = 'width:100%;height:100%;border:none;background:transparent';   // #336: a widget paints its own background
           iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated';
           // Sandbox into a unique origin so widget scripts can't read window.parent
@@ -6904,8 +6908,10 @@
       // left those zones blank (mime_type is null -> no video/image match). Matches the
       // Android player, which keys off the assignment's widget_type.
       if (a.widget_id) {
+        const isWebpage = a.widget_type === 'webpage';
+        const revParam = isWebpage ? Date.now() : (a.widget_rev || 0);
         const iframe = document.createElement('iframe');
-        iframe.src = `${config.serverUrl}/api/widgets/${a.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${a.widget_rev||0}`;
+        iframe.src = `${config.serverUrl}/api/widgets/${a.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${revParam}${isWebpage ? '&type=webpage' : ''}`;
         iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated';
         // Sandbox into a unique origin so widget scripts can't read window.parent
         // state (localStorage / JWT). allow-scripts keeps inline widget code running.

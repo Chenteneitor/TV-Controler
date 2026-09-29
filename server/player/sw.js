@@ -92,7 +92,7 @@ self.addEventListener('fetch', (event) => {
   // PAGE — a controlled, same-origin client — and mounted as srcdoc, so its render request DOES
   // reach this handler and DOES land in the Cache API. Bundles therefore get the persistent store
   // widgets still cannot, on the platform (BrightSign) where the HTTP cache guarantees nothing.
-  const isRevPinnedRender = url.searchParams.has('rev') && (
+  const isRevPinnedRender = url.searchParams.has('rev') && url.searchParams.get('type') !== 'webpage' && (
     (url.pathname.startsWith('/api/widgets/') && url.pathname.endsWith('/render')) ||
     (url.pathname.startsWith('/api/content/') && url.pathname.endsWith('/bundle'))
   );
