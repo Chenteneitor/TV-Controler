@@ -25,7 +25,7 @@ const playerCapabilities = require('../lib/player-capabilities');
 // switch-workspace, not from a special list filter).
 router.get('/', (req, res) => {
   if (!req.workspaceId) return res.json([]);
-  const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+  const limit = Math.min(parseInt(req.query.limit) || 1000, 5000);
   const offset = parseInt(req.query.offset) || 0;
   const devices = db.prepare(`
     SELECT d.*,
