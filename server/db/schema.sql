@@ -20,8 +20,8 @@ INSERT OR IGNORE INTO plans (id, name, display_name, max_devices, max_storage_mb
 VALUES
   ('free',       'free',       'Free',       -1,   -1,    1, 1, 1, 0,     0,     0),
   ('starter',    'starter',    'Starter',    -1,   -1,    1, 1, 1, 0,     0,     1),
-  ('pro',        'pro',        'Pro',        -1,   -1,    1, 1, 1, 0,     2),
-  ('enterprise', 'enterprise', 'Enterprise', -1,   -1,    1, 1, 1, 0,     3);
+  ('pro',        'pro',        'Pro',        -1,   -1,    1, 1, 1, 0,     0,     2),
+  ('enterprise', 'enterprise', 'Enterprise', -1,   -1,    1, 1, 1, 0,     0,     3);
 
 CREATE TABLE IF NOT EXISTS users (
     id              TEXT PRIMARY KEY,
