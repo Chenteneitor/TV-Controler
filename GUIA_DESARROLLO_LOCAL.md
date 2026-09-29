@@ -254,7 +254,7 @@ Esta sección debe mantenerse actualizada por los desarrolladores o motores de I
 | 3 | Límite de pantallas aumentado a 1000 | ✅ Completado | `7edddefc` | `devices.js` (default 1000, max 5000) + `api.js` |
 | 4 | Desbloqueo total de planes y licencias | ✅ Completado | `ac5ebd88` | `subscription.js` bypassed + `schema.sql` ilimitado |
 | 5 | Corrección de carga de páginas en widgets | ✅ Completado | `21e3a5b3` | `widgets.js` + `player/index.html` sandbox completo |
-| 6 | Autenticación por usuario único y eliminación de emails | ✅ Completado | Pendiente push | Login/registro con username único + contraseña, neutralización de emails internos, `/` redirige a login |
+| 6 | Autenticación por usuario único y eliminación de emails | ✅ Completado | `6221831e` | Login/registro con username único + contraseña, neutralización de emails internos, `/` redirige a login |
 | 7 | *Modificaciones futuras fase 2* | 📌 Por definir | — | A la espera de las especificaciones del usuario |
 
 ---
