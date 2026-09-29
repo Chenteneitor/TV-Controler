@@ -247,14 +247,14 @@ Actualmente, al incrustar una página web mediante un widget de tipo Webpage, la
 
 Esta sección debe mantenerse actualizada por los desarrolladores o motores de IA que continúen con el proyecto.
 
-| # | Requerimiento | Estado | Notas |
-|---|---|---|---|
-| 1 | Mute de video desde el servidor en playlists | ⏳ Pendiente | Requiere cambios en `playlists.js` y `server/player/index.html` |
-| 2 | Grupos colapsables en la vista de pantallas | ⏳ Pendiente | Requiere cambios en `dashboard.js` con persistencia local |
-| 3 | Límite de pantallas aumentado a 1000 | ⏳ Pendiente | Requiere cambios en `devices.js` y `api.js` |
-| 4 | Desbloqueo total de planes y licencias | ⏳ Pendiente | Requiere cambios en `subscription.js` y `schema.sql` |
-| 5 | Corrección de carga de páginas en widgets | ⏳ Pendiente | Requiere cambios en `widgets.js` y `server/player/index.html` |
-| 6 | *Modificaciones futuras fase 2* | 📌 Por definir | A la espera de las especificaciones del usuario |
+| # | Requerimiento | Estado | Commit | Notas |
+|---|---|---|---|---|
+| 1 | Mute de video desde el servidor en playlists | ✅ Completado | `0f51ec98` | `playlists.js` + `media-mute.js` + `player/index.html` |
+| 2 | Grupos colapsables en la vista de pantallas | ✅ Completado | `4285d493` | `dashboard.js` con chevron + persistencia `localStorage` |
+| 3 | Límite de pantallas aumentado a 1000 | ✅ Completado | `7edddefc` | `devices.js` (default 1000, max 5000) + `api.js` |
+| 4 | Desbloqueo total de planes y licencias | ✅ Completado | `ac5ebd88` | `subscription.js` bypassed + `schema.sql` ilimitado |
+| 5 | Corrección de carga de páginas en widgets | ✅ Completado | `21e3a5b3` | `widgets.js` + `player/index.html` sandbox completo |
+| 6 | *Modificaciones futuras fase 2* | 📌 Por definir | — | A la espera de las especificaciones del usuario |
 
 ---
 
