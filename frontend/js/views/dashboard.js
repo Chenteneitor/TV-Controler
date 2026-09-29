@@ -62,6 +62,11 @@ const playbackByDevice = new Map();
 // Multi-select state for actions on the dashboard cards.
 const selectedDeviceIds = new Set();
 let selectableGroups = [];
+// Collapsed group IDs — persisted across navigation via localStorage.
+let collapsedGroups = (() => {
+  try { return new Set(JSON.parse(localStorage.getItem('st_collapsed_groups') || '[]')); }
+  catch (_) { return new Set(); }
+})();
 
 function formatTimeAgo(timestamp) {
   if (!timestamp) return t('common.never');
@@ -273,11 +278,19 @@ function getGroupPlaylistLabel(devices, playlists) {
 function renderGroupSection(group, devices, playlists) {
   const onlineCount = devices.filter(d => d.status === 'online').length;
   const playlistLabel = getGroupPlaylistLabel(devices, playlists);
+  const isCollapsed = collapsedGroups.has(group.id);
+  const chevronStyle = isCollapsed ? 'transform:rotate(-90deg);transition:transform 0.2s' : 'transform:rotate(0deg);transition:transform 0.2s';
   return `
     <div class="group-section" data-group-id="${group.id}" style="margin-bottom:24px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:var(--bg-secondary);border-radius:8px;border-left:4px solid ${esc(group.color || '#3B82F6')}">
         <div style="display:flex;align-items:center;gap:10px">
-          <strong style="font-size:15px">${esc(group.name)}</strong>
+          <button class="group-collapse-btn" data-group-collapse="${group.id}" title="Expandir/Colapsar grupo"
+            style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--text-secondary);display:flex;align-items:center;line-height:1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="${chevronStyle}">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <strong style="font-size:15px;cursor:pointer" class="group-collapse-btn" data-group-collapse="${group.id}">${esc(group.name)}</strong>
           <span style="color:var(--text-muted);font-size:12px">${tn('dashboard.devices_count', devices.length)} &middot; ${t('dashboard.online_count', { n: onlineCount })}</span>
           ${playlistLabel ? `<span style="font-size:11px;color:var(--text-secondary);background:var(--bg-primary);padding:2px 8px;border-radius:10px">${t('dashboard.playlist_label', { name: playlistLabel })}</span>` : ''}
         </div>
@@ -318,9 +331,11 @@ function renderGroupSection(group, devices, playlists) {
           <button class="btn" data-group-delete="${group.id}" style="padding:4px 8px;font-size:12px;color:var(--danger)" title="${t('dashboard.delete_group_tooltip')}">&#x2715;</button>
         </div>
       </div>
-      ${renderSelectionBar(group.id, group.id)}
-      <div class="device-grid">
-        ${devices.length > 0 ? devices.map(renderDeviceCard).join('') : `<div style="color:var(--text-muted);font-size:13px;padding:8px 12px">${t('dashboard.no_devices_in_group')}</div>`}
+      <div class="group-collapsible" data-group-body="${group.id}" style="${isCollapsed ? 'display:none' : ''}">
+        ${renderSelectionBar(group.id, group.id)}
+        <div class="device-grid">
+          ${devices.length > 0 ? devices.map(renderDeviceCard).join('') : `<div style="color:var(--text-muted);font-size:13px;padding:8px 12px">${t('dashboard.no_devices_in_group')}</div>`}
+        </div>
       </div>
     </div>
   `;
@@ -1468,6 +1483,29 @@ function attachGroupHandlers(groupsWithDevices) {
         showToast(t('dashboard.toast.group_deleted'), 'success');
         loadDashboard();
       } catch (e) { showToast(e.message, 'error'); }
+    });
+  });
+
+  // Collapsible group toggle: clicking the chevron or the group name expands/collapses the body.
+  document.querySelectorAll('.group-collapse-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const groupId = btn.dataset.groupCollapse;
+      if (!groupId) return;
+      const body = document.querySelector(`[data-group-body="${groupId}"]`);
+      const chevron = document.querySelector(`.group-collapse-btn[data-group-collapse="${groupId}"] svg`);
+      if (!body) return;
+      const nowCollapsed = !collapsedGroups.has(groupId);
+      if (nowCollapsed) {
+        collapsedGroups.add(groupId);
+        body.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(-90deg)';
+      } else {
+        collapsedGroups.delete(groupId);
+        body.style.display = '';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+      }
+      try { localStorage.setItem('st_collapsed_groups', JSON.stringify([...collapsedGroups])); } catch (_) {}
     });
   });
 
