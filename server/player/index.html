@@ -5795,9 +5795,7 @@
     }
 
     function widgetSandboxAttr(item) {
-      return item && item.widget_allow_same_origin
-        ? 'allow-scripts allow-same-origin'
-        : 'allow-scripts';
+      return 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads';
     }
 
     // Buffered widget render (#directory-board black-cycle): build the new widget iframe
@@ -5818,7 +5816,7 @@
       // loads so its black background never shows over the outgoing content.
       iframe.style.background = '#000';
       iframe.style.visibility = 'hidden';
-      iframe.allow = 'autoplay; fullscreen';
+      iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated';
       // Sandbox into a unique origin so widget scripts can't read window.parent state.
       iframe.setAttribute('sandbox', widgetSandboxAttr(item));
 
@@ -6779,7 +6777,7 @@
           const iframe = document.createElement('iframe');
           iframe.src = `${serverUrl}/api/widgets/${item.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${item.widget_rev||0}`;
           iframe.style.cssText = 'width:100%;height:100%;border:none;background:transparent';   // #336: a widget paints its own background
-          iframe.allow = 'autoplay; fullscreen';
+          iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated';
           // Sandbox into a unique origin so widget scripts can't read window.parent
           // state (localStorage / JWT). allow-scripts keeps inline widget code running.
           iframe.setAttribute('sandbox', widgetSandboxAttr(item));
@@ -6908,6 +6906,7 @@
       if (a.widget_id) {
         const iframe = document.createElement('iframe');
         iframe.src = `${config.serverUrl}/api/widgets/${a.widget_id}/render?device=${encodeURIComponent(config.deviceId||'')}&rev=${a.widget_rev||0}`;
+        iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated';
         // Sandbox into a unique origin so widget scripts can't read window.parent
         // state (localStorage / JWT). allow-scripts keeps inline widget code running.
         iframe.setAttribute('sandbox', widgetSandboxAttr(a));

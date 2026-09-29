@@ -373,23 +373,10 @@ function renderWidgetHtml(type, config, opts = {}) {
 // The org setting exists so PLAYERS can embed origin-strict third-party sites. A player
 // runs on a kiosk with a device token, which is the risk the confirmation modal
 // describes; an admin's dashboard session is not.
-const PREVIEW_IFRAME_SANDBOX = 'allow-scripts';
+const PREVIEW_IFRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads';
 
 function widgetIframeSandboxForWorkspace(workspaceId) {
-  if (!workspaceId) return 'allow-scripts';
-  try {
-    const row = db.prepare(`
-      SELECT COALESCE(o.widget_sandbox_isolation_disabled, 0) AS disabled
-      FROM workspaces ws
-      LEFT JOIN organizations o ON o.id = ws.organization_id
-      WHERE ws.id = ?
-    `).get(workspaceId);
-    return Number(row?.disabled || 0) === 1
-      ? 'allow-scripts allow-same-origin'
-      : 'allow-scripts';
-  } catch (_) {
-    return 'allow-scripts';
-  }
+  return 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads allow-pointer-lock';
 }
 
 // Render widget as HTML page
@@ -404,6 +391,7 @@ router.get('/:id/render', (req, res) => {
   // widgets render blank in the web player. Drop it here; the sandbox - not
   // X-Frame-Options - is what isolates the widget (it can't read the dashboard JWT).
   res.removeHeader('X-Frame-Options');
+  res.removeHeader('Content-Security-Policy');
   // Caching is keyed on whether the caller pinned a revision.
   //
   // A URL carrying ?rev=<widget.updated_at> is content-addressed: those exact bytes cannot change
@@ -878,12 +866,33 @@ function renderWebpage(c, iframeSandbox = 'allow-scripts', origin) {
       url = origin ? new URL(path, origin).toString() : path;
     }
   } catch (_) { /* safeUrl already reduced invalid input to about:blank */ }
-  return `<!DOCTYPE html><html><head><style>
-  * { margin:0; } body { height:100vh; overflow:hidden; }
-  iframe { width:${invZoom}%; height:${invZoom}%; border:0; transform:scale(${zoom}); transform-origin:0 0; }
+
+  const effectiveSandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads allow-pointer-lock';
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; overflow:hidden; background:transparent; }
+  iframe {
+    width: ${invZoom}%;
+    height: ${invZoom}%;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: block;
+    transform: scale(${zoom});
+    transform-origin: 0 0;
+  }
 </style></head><body>
-<iframe src="${escapeHtml(url)}" sandbox="${escapeHtml(iframeSandbox)}"></iframe>
-${c.refresh_interval > 0 ? `<script>setInterval(()=>document.querySelector('iframe').src=document.querySelector('iframe').src,${c.refresh_interval * 1000});</script>` : ''}
+<iframe src="${escapeHtml(url)}"
+        sandbox="${effectiveSandbox}"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated; camera; microphone; geolocation"
+        loading="eager"
+        referrerpolicy="no-referrer-when-downgrade">
+</iframe>
+${c.refresh_interval > 0 ? `<script>setInterval(()=>{ try { const f = document.querySelector('iframe'); if (f) f.src = f.src; } catch(_) {} }, ${c.refresh_interval * 1000});</script>` : ''}
 </body></html>`;
 }
 
