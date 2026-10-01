@@ -193,7 +193,33 @@ const allowedHostsProd = [
 function corsOriginCheck(origin, callback) {
   // No origin = same-origin / mobile app / server-to-server / kiosk iframe.
   if (!origin) return callback(null, true);
-  if (config.selfHosted) return callback(null, true);
+  if (config.selfHosted) {
+    if (process.env.ALLOWED_ORIGINS) {
+      const allowed = process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim().toLowerCase());
+      if (allowed.includes(origin.toLowerCase())) return callback(null, true);
+      try {
+        const host = new URL(origin).hostname.toLowerCase();
+        if (allowed.includes(host)) return callback(null, true);
+      } catch (_) {}
+      return callback(null, false);
+    }
+    // En despliegues self-hosted, permitir orígenes locales y redes privadas (LAN RFC1918)
+    try {
+      const host = new URL(origin).hostname.toLowerCase();
+      if (
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        /^10\./.test(host) ||
+        /^192\.168\./.test(host) ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)
+      ) {
+        return callback(null, true);
+      }
+    } catch (_) {
+      return callback(null, false);
+    }
+    return callback(null, false);
+  }
   if (!isProd) return callback(null, true);
   let host;
   try { host = new URL(origin).hostname; } catch { return callback(null, false); }
